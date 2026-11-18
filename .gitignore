@@ -1,0 +1,17 @@
+﻿# Generated files
+*.log
+*.user
+*.suo
+*.tmp
+*.bak
+tests/bin/*.exe
+tests/bin/*.pdb
+bin/
+obj/
+.vs/
+# Keep reproducible test fixtures
+!tests/bin/
+!tests/bin/**
+# Local runtime
+.mini-excel-recovery/
+recent.txt
