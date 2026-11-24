@@ -20,6 +20,7 @@ namespace CalcRapido
     internal static class RecoveryManager
     {
         private static string _directory;
+        public static string LastError { get; internal set; }
 
         private static string DirectoryPath
         {
@@ -113,6 +114,7 @@ namespace CalcRapido
 
         public static void Save(Workbook workbook, string originalPath, string displayName)
         {
+            LastError = null;
             if (workbook == null) return;
             string directory = DirectoryPath;
             if (!Directory.Exists(directory)) return;

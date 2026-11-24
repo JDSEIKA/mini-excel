@@ -1,14 +1,14 @@
 # Estado de desarrollo y compatibilidad con Excel
 
 Fecha: 2026-11-18  
-Versión: Mini Excel Beta 0.0.3  
+Versión: Mini Excel Beta 0.0.4  
 Artefacto: `dist/MiniExcel.exe`
 
 ## Estado de desarrollo
 
 | Indicador | Estado |
 |---|---|
-| Fase | Beta 0.0.3 |
+| Fase | Beta 0.0.4 |
 | Compilación | Correcta, sin errores ni warnings |
 | Pruebas automatizadas | 290 correctas, 0 fallidas |
 | Tamaño del proyecto | 70 archivos, ~3,9 MB |

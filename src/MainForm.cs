@@ -49,6 +49,8 @@ namespace CalcRapido
         private DateTime _lastRecoveryAttempt = DateTime.MinValue;
         private volatile bool _recoveryBusy;
         private bool _largeRecoveryWarned;
+        private bool _recoveryErrorWarned;
+        private const long MaxRecoveryCells = 300000;
         private bool _startupComplete;
 
         public MainForm(string initialPath)
@@ -479,16 +481,21 @@ namespace CalcRapido
         private void RecoveryTick()
         {
             if (_recoveryBusy || _closing || _syncing || _workbook == null || _grid == null) return;
+            if (!string.IsNullOrEmpty(RecoveryManager.LastError) && !_recoveryErrorWarned)
+            {
+                _recoveryErrorWarned = true;
+                _statusLabel.Text = "La recuperación automática falló: " + RecoveryManager.LastError;
+            }
             if (!_dirty || _grid.IsEditing) return;
             if ((DateTime.UtcNow - _lastRecoveryAttempt).TotalSeconds < 12) return;
             long cells = 0;
             foreach (Sheet sheet in _workbook.Sheets) cells += sheet.Cells.Count;
-            if (cells > 300000)
+            if (cells > MaxRecoveryCells)
             {
                 if (!_largeRecoveryWarned)
                 {
                     _largeRecoveryWarned = true;
-                    _statusLabel.Text = "Recuperación automática omitida para un libro grande";
+                    _statusLabel.Text = "Libro grande: recuperación automática desactivada (>300.000 celdas). Guarda manualmente.";
                 }
                 return;
             }
@@ -518,9 +525,9 @@ namespace CalcRapido
                 {
                     if (!_closing) RecoveryManager.Save(snapshot, path, name);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // El guardado normal sigue siendo la fuente de verdad.
+                    RecoveryManager.LastError = ex.GetType().Name + ": " + ex.Message;
                 }
                 finally { _recoveryBusy = false; }
             });

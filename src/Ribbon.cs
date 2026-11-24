@@ -844,7 +844,7 @@ namespace CalcRapido
         private void ShowAbout()
         {
             string text =
-                "Mini Excel · Beta 0.0.3\r\n" +
+                "Mini Excel · Beta 0.0.4\r\n" +
                 "Hoja de cálculo nativa para Windows\r\n\r\n" +
                 "Arranque típico: 0,3 s · 457 KB · sin dependencias externas\r\n" +
                 "Formatos: .crb (nativo), .xlsx (Excel) y .csv\r\n\r\n" +

@@ -1,6 +1,6 @@
 # Mini Excel
 
-> **Mini Excel Beta 0.0.3**
+> **Mini Excel Beta 0.0.4**
 > Seguridad de apertura: ver [SEGURIDAD.md](SEGURIDAD.md). — vista previa, no estable 1.0. Ver `PRUEBAS-COMPATIBILIDAD.md` para
 > los límites de `.xls`, fórmulas compartidas, imágenes y objetos avanzados.
 
@@ -9,7 +9,7 @@ interfaz y unos comandos deliberadamente parecidos a Excel. Forma parte de la id
 un programa de pocos cientos de KB que puede abrir, editar y guardar los `.xlsx` que envían otras
 suites, sin arrastrar una instalación de varios cientos de MB.
 
-- **Un solo ejecutable de 518 KB** (530.944 bytes), sin instalador, sin Electron y sin
+- **Un solo ejecutable de 519 KB** (531.456 bytes), sin instalador, sin Electron y sin
   dependencias de terceros.
 - **Arranque medido: 228–365 ms** según la caché del sistema; en caliente ronda los 230–240 ms
   (Windows 10 x64, .NET Framework 4.8).
@@ -53,8 +53,7 @@ suites, sin arrastrar una instalación de varios cientos de MB.
 - **Segmentadores funcionales:** al pulsar un elemento se filtra la tabla dinámica y se recalcula su resumen.
 - **Tablas dinámicas con campos de columna:** se genera una matriz de filas × valores de columna.
 - **Tablas dinámicas con varios campos de fila:** se respeta `firstDataCol` para decidir cuántos niveles de fila mostrar.
-- **Tablas dinámicas actualizables:** el menú contextual permite reconstruir la tabla desde su caché (suma de campos de datos).
-- **Tablas dinámicas y segmentadores:** se detectan y se conservan; el panel del segmentador visual se dibuja y las tablas reciben un estilo básico. La actualización/filtrado real de la tabla dinámica sigue pendiente.
+- **Tablas dinámicas actualizables:** el menú contextual reconstruye la tabla desde su caché (suma de campos de datos) y los segmentadores aplican un filtro básico. No implementa agrupaciones, campos calculados ni estilos avanzados de Excel.
 - **Hojas protegidas:** se abren en modo de solo lectura y bloquean la edición.
 - **Títulos de impresión:** se repiten filas y columnas de título en cada página.
  las filas configuradas como título se repiten en cada página.
@@ -74,8 +73,7 @@ suites, sin arrastrar una instalación de varios cientos de MB.
 2. Escribe en la celda activa y pulsa `Enter`, o utiliza la barra de fórmulas.
 3. Prueba `=SUMA(A1:A10)`, `=PROMEDIO(B2:B8)`, `=SI(A1>0;"Sí";"No")`.
 4. Abre `Ejemplo.xlsx`, que acompaña al ejecutable, para ver formato, moneda, fechas, una tabla,
-   una imagen y un gráfico creados por otra suite. También puedes probar `Ejemplo.xls`, un libro
-   de Excel 97-2003 que se abre en modo compatible.
+   una imagen y un gráfico creados por otra suite.
 
 También puedes abrir un archivo desde la línea de comandos:
 
@@ -102,6 +100,15 @@ de 2.000.000 de celdas se rechaza con un error controlado por el límite de
 
 Para libros de más de 500.000 celdas se recomienda tener al menos 2 GB de RAM
 libre y guardar con frecuencia.
+
+La recuperación automática se desactiva por encima de **300.000 celdas** para no
+duplicar un libro grande en memoria. En ese caso la aplicación avisa y el usuario
+debe guardar manualmente. Un fallo de la recuperación en segundo plano se muestra
+en la barra de estado; no se descarta silenciosamente.
+
+El hash PE del ejecutable puede variar entre compilaciones aunque el código y el
+tamaño coincidan; para verificar una publicación use la versión de archivo, el
+tamaño y el hash anunciado en el release.
 
 ## Compatibilidad XLSX (Nivel 2)
 
@@ -272,17 +279,16 @@ de filas vacías: internamente se limita el cálculo a la zona usada.
 
 Mini Excel es deliberadamente pequeño. Lo que **no** hace todavía:
 
-- Las imágenes se muestran, imprimen, mueven, recortan y eliminan, y sus cambios se
-  guardan tanto en `.xlsx` como en `.crb`.
-- Editar tablas, formato condicional o comentarios desde la interfaz.
-  Se conservan al guardar.
-- Macros/VBA, complementos, tablas dinámicas, colaboración o nubes.
-- Abrir archivos protegidos con contraseña.
+- Editar tablas, formato condicional o comentarios desde la interfaz; se conservan al guardar.
+- Macros/VBA, complementos, colaboración, nubes o actualización de vínculos externos.
+- Abrir archivos cifrados con contraseña.
+- Escritura `.xls`: los libros 97-2003 se abren en modo compatible y se guardan como `.xlsx`.
+- Tablas dinámicas avanzadas: agrupaciones, campos calculados y estilos exactos de Excel.
+- Algunos tipos de gráfico se aproximan con columnas, líneas, áreas o tortas.
 
-Al insertar o eliminar filas/columnas se reajustan las celdas, las combinaciones, los altos de
-fila, las columnas ocultas, los hipervínculos y las fórmulas. **No** se reajustan automáticamente
-los rangos internos de tablas, formato condicional, validación, comentarios ni nombres definidos:
-siguen siendo válidos para Excel, pero pueden quedar desplazados respecto a los datos.
+Al insertar o eliminar filas/columnas se reajustan celdas, combinaciones, altos de fila,
+columnas ocultas, hipervínculos, tablas y fórmulas. El formato condicional, las validaciones,
+los comentarios y los nombres definidos pueden quedar desplazados respecto a los datos.
 
 Las fórmulas que el motor no entiende se conservan en el archivo y Excel las recalcula; en
 Mini Excel pueden mostrarse como error de sintaxis o de nombre. Las fórmulas de tabla estructurada
@@ -295,7 +301,7 @@ inicial muestra 256 columnas y crece al navegar o pegar datos.
 
 | Métrica | Valor |
 |---|---|
-| Ejecutable | 530.944 bytes (518 KB) |
+| Ejecutable | 531.456 bytes (519 KB) |
 | Arranque hasta ventana | 228–365 ms según caché; ~230–240 ms en caliente |
 | Working set en reposo | ~32 MB |
 | Dependencias de terceros | Ninguna |

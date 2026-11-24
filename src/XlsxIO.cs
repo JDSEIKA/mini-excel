@@ -3390,45 +3390,32 @@ namespace CalcRapido
             IOException last = null;
             for (int attempt = 0; attempt < 6; attempt++)
             {
+                string backup = path + "." + Guid.NewGuid().ToString("N") + ".bak";
                 try
                 {
-                    if (File.Exists(path)) File.Replace(temp, path, null);
-                    else File.Move(temp, path);
+                    if (File.Exists(path))
+                    {
+                        File.Replace(temp, path, backup);
+                        try { if (File.Exists(backup)) File.Delete(backup); } catch { }
+                    }
+                    else
+                    {
+                        File.Move(temp, path);
+                    }
                     return;
                 }
                 catch (IOException ex)
                 {
                     last = ex;
+                    try { if (File.Exists(backup)) File.Delete(backup); } catch { }
                     System.Threading.Thread.Sleep(80 * (attempt + 1));
                 }
             }
-            // Algunos antivirus/indexadores mantienen el destino abierto un
-            // instante. Hacemos una copia con respaldo y restauramos si falla.
-            string backup = path + "." + Guid.NewGuid().ToString("N") + ".bak";
-            bool hadDestination = File.Exists(path);
-            try
-            {
-                if (hadDestination) File.Copy(path, backup, true);
-                try
-                {
-                    File.Copy(temp, path, true);
-                    File.Delete(temp);
-                }
-                catch
-                {
-                    if (hadDestination && File.Exists(backup)) File.Copy(backup, path, true);
-                    throw;
-                }
-            }
-            catch
-            {
-                if (last != null) throw last;
-                throw;
-            }
-            finally
-            {
-                try { if (File.Exists(backup)) File.Delete(backup); } catch { }
-            }
+            // No se copia sobre el destino: si el reemplazo atómico falla,
+            // se conserva el archivo original y se informa el error.
+            throw new IOException(
+                "No se pudo reemplazar el archivo de forma atómica. El archivo original no fue modificado.",
+                last);
         }
 
         public static void SaveStrict(Workbook wb, string path)

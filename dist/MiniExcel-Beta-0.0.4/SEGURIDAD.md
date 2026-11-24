@@ -1,7 +1,7 @@
 # Seguridad al abrir archivos
 
 Fecha: 2026-11-17
-Alcance: lector `.xlsx`, `.xls`, `.crb` y CSV de Mini Excel Beta 0.0.3.
+Alcance: lector `.xlsx`, `.xls`, `.crb` y CSV de Mini Excel Beta 0.0.4.
 
 ## Modelo de amenaza
 
@@ -76,6 +76,13 @@ Mini Excel trata cada archivo como **no confiable**. Los riesgos considerados so
 
 - Guardado atómico mediante archivo temporal y reemplazo.
 - El archivo original no se modifica si falla la escritura.
+
+## Límites de seguridad
+
+- La aplicación **no está firmada** con Authenticode.
+- **No hay sandbox del sistema operativo**: se ejecuta con los permisos del usuario.
+- Los límites de lectura reducen el riesgo de archivos malformados, pero no convierten a Mini Excel en una barrera para abrir archivos hostiles.
+- Para documentos no confiables, use una máquina virtual o un usuario aislado y mantenga antivirus/SmartScreen activos.
 
 ## Evidencia de pruebas
 
