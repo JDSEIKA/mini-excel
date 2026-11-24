@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.IO.Compression;
+using System.Text;
 using System.Windows.Forms;
 using CalcRapido;
 
@@ -30,6 +31,7 @@ public static class AuditRegressionTest
         TestCutAcrossSheets();
         TestSaveFallback();
         TestCloneIsolation();
+        TestCsvEncoding();
         Console.WriteLine("AuditRegression: " + _ok + " correctas, " + _bad + " fallidas.");
         return _bad == 0 ? 0 : 1;
     }
@@ -146,6 +148,25 @@ public static class AuditRegressionTest
             grid.PasteClipboard();
             Check("corte entre hojas", one.GetCell(0, 0) == null && two.GetCell(0, 1) != null &&
                 two.GetCell(0, 1).Value.Text == "A" && two.GetCell(0, 0).Value.Text == "B", "estado incorrecto");
+        }
+    }
+
+    private static void TestCsvEncoding()
+    {
+        string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "mini-csv-" + Guid.NewGuid().ToString("N") + ".csv");
+        try
+        {
+            File.WriteAllBytes(path, Encoding.GetEncoding(1252).GetBytes(
+                "Nombre;Café\r\nTeléfono;+57 300\r\n"));
+            Workbook wb = FileIO.Open(path);
+            Check("csv Windows-1252", wb.Sheets[0].GetCell(0, 1).Value.Text == "Café",
+                wb.Sheets[0].GetCell(0, 1).Value.ToDisplayString());
+            Check("csv teléfono texto", wb.Sheets[0].GetCell(1, 1).Value.Text == "+57 300",
+                wb.Sheets[0].GetCell(1, 1).Value.ToDisplayString());
+        }
+        finally
+        {
+            try { if (File.Exists(path)) File.Delete(path); } catch { }
         }
     }
 

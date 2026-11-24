@@ -27,7 +27,7 @@ Write-Host 'Compilando MiniExcel.exe...'
 & $csc $args
 if ($LASTEXITCODE -ne 0) { throw "La compilaciÃ³n fallÃ³ (cÃ³digo $LASTEXITCODE)." }
 
-$testFiles = @('Model.cs', 'FormulaEngine.cs', 'Functions.cs', 'ConditionalFormatting.cs', 'TableFormatting.cs', 'FileIO.cs', 'Ole2.cs', 'XlsIO.cs', 'XlsFormula.cs', 'XlsxIO.cs', 'Compatibility.cs', 'Charts.cs', 'SelfTest.cs') |
+$testFiles = @('Model.cs', 'FormulaEngine.cs', 'Functions.cs', 'ConditionalFormatting.cs', 'TableFormatting.cs', 'FileIO.cs', 'AtomicIO.cs', 'Ole2.cs', 'XlsIO.cs', 'XlsFormula.cs', 'XlsxIO.cs', 'Compatibility.cs', 'Charts.cs', 'SelfTest.cs') |
     ForEach-Object { Join-Path $root ('src\' + $_) }
 $testMain = Join-Path $root 'tests\TestMain.cs'
 $testExe = Join-Path $root 'tests\bin\CalcRapido.Tests.exe'
@@ -124,7 +124,7 @@ if ($LASTEXITCODE -ne 0) { throw "Las pruebas de cuadrÃ­cula no compilaron (c�
 if ($LASTEXITCODE -ne 0) { throw "Fallaron las pruebas de cuadrÃ­cula (cÃ³digo $LASTEXITCODE)." }
 
 $auditFiles = @('Theme.cs', 'SheetGrid.cs', 'Model.cs', 'FormulaEngine.cs', 'Functions.cs', 'ConditionalFormatting.cs', 'TableFormatting.cs',
-    'FileIO.cs', 'Ole2.cs', 'XlsIO.cs', 'XlsFormula.cs', 'XlsxIO.cs', 'Compatibility.cs', 'Charts.cs') |
+    'FileIO.cs', 'AtomicIO.cs', 'Ole2.cs', 'XlsIO.cs', 'XlsFormula.cs', 'XlsxIO.cs', 'Compatibility.cs', 'Charts.cs') |
     ForEach-Object { Join-Path $root ('src\' + $_) }
 $auditExe = Join-Path $root 'tests\bin\AuditRegressionTest.exe'
 $aargs = @('/target:exe', ('/out:' + $auditExe), '/main:AuditRegressionTest') + $common +

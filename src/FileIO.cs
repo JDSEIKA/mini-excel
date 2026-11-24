@@ -26,7 +26,8 @@ namespace CalcRapido
             if (ext == ".csv" || ext == ".txt" || ext == ".tsv") wb = LoadCsv(path);
             else if (ext == ".xlsx") wb = XlsxIO.Load(path);
             else if (ext == ".xls") wb = XlsIO.Load(path);
-            else wb = LoadNative(path);
+            else if (ext == ".crb") wb = LoadNative(path);
+            else throw new FileFormatException("Extensión no soportada. Use .xlsx, .xls, .csv, .tsv, .txt o .crb.");
             CompatibilityScanner.ScanFormulas(wb);
             return wb;
         }
@@ -38,7 +39,8 @@ namespace CalcRapido
             if (ext == ".xlsx") { XlsxIO.Save(wb, path); return; }
             if (ext == ".xls")
                 throw new FileFormatException("El formato .xls es de solo lectura en esta versión. Use Guardar como .xlsx.");
-            SaveNative(wb, path);
+            if (ext == ".crb") { SaveNative(wb, path); return; }
+            throw new FileFormatException("Extensión de guardado no soportada. Use .xlsx, .csv o .crb.");
         }
 
         public static void SaveNative(Workbook wb, string path)
@@ -515,22 +517,18 @@ namespace CalcRapido
             maxCol = Math.Min(maxCol, 1000);
             if ((long)(maxRow + 1) * (maxCol + 1) > 2000000)
                 throw new FileFormatException("La hoja es demasiado grande para exportarla a CSV.");
+            char separator = CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator == ","
+                ? ';' : ',';
             StringBuilder sb = new StringBuilder();
             for (int row = 0; row <= maxRow; row++)
             {
                 for (int col = 0; col <= maxCol; col++)
                 {
-                    if (col > 0) sb.Append(',');
+                    if (col > 0) sb.Append(separator);
                     Cell c = s.GetCell(row, col);
                     if (c == null) continue;
-                    string text;
-                    if (c.IsFormula) text = c.Value.ToFormulaText();
-                    else if (c.Value.Kind == ValueKind.Number) text = c.Value.Number.ToString("G17", CultureInfo.InvariantCulture);
-                    else text = c.Value.Kind == ValueKind.Empty ? "" : c.Value.ToDisplayString();
-                    if (!c.IsFormula && c.Value.Kind == ValueKind.Text && text.Length > 0 &&
-                        (text[0] == '=' || text[0] == '+' || text[0] == '-' || text[0] == '@'))
-                        text = "'" + text;
-                    if (text.IndexOfAny(new char[] { ',', '"', '\r', '\n' }) >= 0)
+                    string text = CsvText(c, separator);
+                    if (text.IndexOfAny(new char[] { separator, '"', '\r', '\n' }) >= 0)
                     {
                         sb.Append('"');
                         sb.Append(text.Replace("\"", "\"\""));
@@ -540,31 +538,49 @@ namespace CalcRapido
                 }
                 sb.Append("\r\n");
             }
-            string dir = Path.GetDirectoryName(Path.GetFullPath(path));
-            if (!Directory.Exists(dir)) throw new DirectoryNotFoundException("No existe la carpeta de destino.");
-            string temp = Path.Combine(dir, "~calcrapido_" + Guid.NewGuid().ToString("N") + ".csv.tmp");
-            try
+            AtomicIO.Save(path, delegate(string temp)
             {
                 File.WriteAllText(temp, sb.ToString(), new UTF8Encoding(true));
-                if (File.Exists(path)) File.Replace(temp, path, null);
-                else File.Move(temp, path);
-            }
-            finally
+            });
+        }
+
+        private static string CsvText(Cell cell, char separator)
+        {
+            if (cell == null) return "";
+            CellValue value = cell.Value;
+            string text;
+            if (value.Kind == ValueKind.Number)
             {
-                if (File.Exists(temp)) { try { File.Delete(temp); } catch { } }
+                CellStyle style = cell.EffectiveStyle;
+                if (style != null && (style.Format == NumberFormatKind.Date ||
+                    style.Format == NumberFormatKind.Time || style.Format == NumberFormatKind.Percent ||
+                    style.Format == NumberFormatKind.Currency || style.Format == NumberFormatKind.Custom))
+                    text = NumberFormatter.Format(value, style);
+                else
+                    text = value.Number.ToString("R",
+                        separator == ';' ? CultureInfo.CurrentCulture : CultureInfo.InvariantCulture);
             }
+            else if (value.Kind == ValueKind.Empty) text = "";
+            else text = value.ToDisplayString();
+
+            // Protección contra inyección CSV también para resultados de formulas.
+            if (text.Length > 0 && "=+-@\t\r".IndexOf(text[0]) >= 0)
+                text = "'" + text;
+            return text;
         }
 
         public static Workbook LoadCsv(string path)
         {
             FileInfo fi = new FileInfo(path);
             if (fi.Length > 50L * 1024 * 1024) throw new FileFormatException("El archivo CSV es demasiado grande.");
-            string text;
-            using (StreamReader sr = new StreamReader(path, Encoding.UTF8, true))
-                text = sr.ReadToEnd();
+            byte[] bytes = File.ReadAllBytes(path);
+            bool usedFallback;
+            string text = DecodeCsv(bytes, out usedFallback);
             char delimiter = DetectDelimiter(text);
             List<List<string>> rows = ParseDelimited(text, delimiter);
             Workbook wb = new Workbook();
+            if (usedFallback)
+                wb.AddLoadWarning("CSV sin UTF-8 válido: se interpretó como Windows-1252.");
             Sheet sheet = wb.Sheets[0];
             int maxRows = Math.Min(rows.Count, Limits.MaxRows);
             int cells = 0;
@@ -576,14 +592,43 @@ namespace CalcRapido
                 {
                     string value = fields[c];
                     if (value == null || value.Length == 0) continue;
+                    if (value.Length > 1 && value[0] == '\'' && "=+-@\t\r".IndexOf(value[1]) >= 0)
+                        value = value.Substring(1);
                     if (++cells > 2000000)
                         throw new FileFormatException("El CSV contiene demasiadas celdas.");
-                    sheet.SetInput(r, c, value);
+                    // Los teléfonos con + y espacios deben conservarse como texto,
+                    // no convertirse en un número que pierde el prefijo.
+                    if (value.Length > 1 && value[0] == '+')
+                        sheet.SetTextLiteral(r, c, value);
+                    else
+                        sheet.SetInput(r, c, value);
                 }
             }
             sheet.RecalculateUsedRange();
             wb.Recalculate();
             return wb;
+        }
+
+        private static string DecodeCsv(byte[] bytes, out bool usedFallback)
+        {
+            usedFallback = false;
+            if (bytes == null || bytes.Length == 0) return "";
+            if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+                return Encoding.UTF8.GetString(bytes, 3, bytes.Length - 3);
+            if (bytes.Length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE)
+                return Encoding.Unicode.GetString(bytes, 2, bytes.Length - 2);
+            if (bytes.Length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF)
+                return Encoding.BigEndianUnicode.GetString(bytes, 2, bytes.Length - 2);
+            try
+            {
+                return new UTF8Encoding(false, true).GetString(bytes);
+            }
+            catch (DecoderFallbackException)
+            {
+                usedFallback = true;
+                try { return Encoding.GetEncoding(1252).GetString(bytes); }
+                catch { return Encoding.Default.GetString(bytes); }
+            }
         }
 
         private static char DetectDelimiter(string text)

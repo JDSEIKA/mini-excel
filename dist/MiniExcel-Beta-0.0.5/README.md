@@ -1,6 +1,6 @@
 # Mini Excel
 
-> **Mini Excel Beta 0.0.4**
+> **Mini Excel Beta 0.0.5**
 > Seguridad de apertura: ver [SEGURIDAD.md](SEGURIDAD.md). — vista previa, no estable 1.0. Ver `PRUEBAS-COMPATIBILIDAD.md` para
 > los límites de `.xls`, fórmulas compartidas, imágenes y objetos avanzados.
 
@@ -18,7 +18,8 @@ suites, sin arrastrar una instalación de varios cientos de MB.
   `.crb` y exporta `.csv`.
 - **Guardado atómico y recuperación:** cada guardado escribe primero un archivo temporal y
   solo sustituye el destino cuando termina correctamente. Además se crea una copia de
-  recuperación periódica y al reiniciar se ofrece restaurarla tras un cierre inesperado.
+  recuperación periódica (por sesión, cifrada con DPAPI y EFS cuando está disponible) y al
+  reiniciar se ofrece restaurarla tras un cierre inesperado.
 - **Avisos al abrir**: si el documento trae funciones no soportadas, gráficos, imágenes,
   tablas, tablas dinámicas o macros, se muestra un aviso de compatibilidad y se explican
   los límites de esta versión.
@@ -266,7 +267,7 @@ de filas vacías: internamente se limita el cálculo a la zona usada.
 | `.xlsx` | Sí | Sí | **Formato principal.** Ida y vuelta con conservación de partes avanzadas. |
 | `.xls` (Excel 97-2003) | Sí | No | **Solo lectura BIFF8.** Se convierte a `.xlsx` al guardar. Lee celdas, fórmulas comunes, nombres definidos, fórmulas compartidas simples, estilos, combinaciones, anchos, altos, ocultos y paneles. |
 | `.crb` (nativo) | Sí | Sí | Conserva hojas, fórmulas, estilos, anchos, altos, ocultos, combinaciones, paneles, hipervínculos, `Date1904`, nombres definidos y gráficos. Conserva también imágenes en el formato nativo. No conserva tablas, formato condicional ni comentarios. |
-| `.csv` | Sí | Sí | Solo la hoja activa; pierde fórmulas, estilos y formato. |
+| `.csv` | Sí | Sí | Solo la hoja activa; pierde fórmulas, estilos y formato. Al importar detecta UTF-8 y Windows-1252; al exportar usa el separador regional y protege fórmulas/inyección. |
 
 - Al guardar un `.xlsx` abierto se usa el archivo original como base y se parchean las partes
   necesarias.
@@ -294,6 +295,10 @@ Las fórmulas que el motor no entiende se conservan en el archivo y Excel las re
 Mini Excel pueden mostrarse como error de sintaxis o de nombre. Las fórmulas de tabla estructurada
 se traducen para el cálculo interno y se guardan con su texto original.
 
+El evaluador limita las cadenas de dependencia a **512 niveles** y comprueba el espacio de pila
+antes de cada recursión: un libro con dependencias más profundas muestra un error controlado en
+lugar de cerrar la aplicación. Excel no tiene ese límite.
+
 Límites de hoja: 1.048.576 filas × 16.384 columnas, 32.767 caracteres por celda. La cuadrícula
 inicial muestra 256 columnas y crece al navegar o pegar datos.
 
@@ -315,8 +320,8 @@ inicial muestra 256 columnas y crece al navegar o pegar datos.
 | Validación, autofiltro y OOXML strict | Pruebas: 18 correctas |
 | Buscar y reemplazar | Pruebas: 5 correctas |
 | Cuadrícula, filtro y freeze | Pruebas: 45 correctas |
-| Regresión de seguridad, clones y guardado | Pruebas: 28 correctas |
-| **Total** | **290 comprobaciones** |
+| Regresión de seguridad, clones y guardado | Pruebas: 30 correctas |
+| **Total** | **292 comprobaciones** |
 
 El ejecutable usa **WinForms sobre .NET Framework 4.8** (incluido en Windows 10/11), sin runtime
 adicional, sin instalador y sin archivos que acompañen al `.exe`. La cuadrícula dibuja solo las

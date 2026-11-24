@@ -20,6 +20,7 @@ namespace CalcRapido
     internal static class RecoveryManager
     {
         private static string _directory;
+        private static readonly string SessionId = Guid.NewGuid().ToString("N");
         public static string LastError { get; internal set; }
 
         private static string DirectoryPath
@@ -53,12 +54,12 @@ namespace CalcRapido
 
         public static string SnapshotPath
         {
-            get { return Path.Combine(DirectoryPath, "session.recovery.xlsx"); }
+            get { return Path.Combine(DirectoryPath, "session-" + SessionId + ".recovery.xlsx"); }
         }
 
         public static string MetadataPath
         {
-            get { return Path.Combine(DirectoryPath, "session.recovery.txt"); }
+            get { return Path.Combine(DirectoryPath, "session-" + SessionId + ".recovery.txt"); }
         }
 
         public static bool TryRead(out RecoveryInfo info)
@@ -66,44 +67,54 @@ namespace CalcRapido
             info = null;
             try
             {
-                string meta = MetadataPath;
-                string snapshot = SnapshotPath;
-                if (!File.Exists(meta) || !File.Exists(snapshot)) return false;
-                byte[] rawMeta = File.ReadAllBytes(meta);
-                string metaText;
-                try
+                string[] metas = Directory.GetFiles(DirectoryPath, "session-*.recovery.txt");
+                Array.Sort(metas, delegate(string a, string b)
                 {
-                    metaText = Encoding.UTF8.GetString(ProtectedData.Unprotect(rawMeta, null,
-                        DataProtectionScope.CurrentUser));
+                    return File.GetLastWriteTimeUtc(b).CompareTo(File.GetLastWriteTimeUtc(a));
+                });
+                foreach (string meta in metas)
+                {
+                    byte[] rawMeta = File.ReadAllBytes(meta);
+                    string metaText;
+                    try
+                    {
+                        metaText = Encoding.UTF8.GetString(ProtectedData.Unprotect(rawMeta, null,
+                            DataProtectionScope.CurrentUser));
+                    }
+                    catch
+                    {
+                        continue; // No se aceptan metadatos de recuperación en texto plano.
+                    }
+                    Dictionary<string, string> values = new Dictionary<string, string>();
+                    foreach (string line in metaText.Split(new string[] { "\r\n", "\n" },
+                        StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        int eq = line.IndexOf('=');
+                        if (eq <= 0) continue;
+                        values[line.Substring(0, eq)] = line.Substring(eq + 1);
+                    }
+                    string snapshotName;
+                    if (!values.TryGetValue("snapshot", out snapshotName) ||
+                        string.IsNullOrEmpty(snapshotName)) continue;
+                    string snapshot = Path.Combine(DirectoryPath, Path.GetFileName(snapshotName));
+                    if (!File.Exists(snapshot)) continue;
+                    string encodedPath, encodedName, encodedTime;
+                    values.TryGetValue("path", out encodedPath);
+                    values.TryGetValue("name", out encodedName);
+                    values.TryGetValue("time", out encodedTime);
+                    info = new RecoveryInfo
+                    {
+                        SnapshotPath = snapshot,
+                        MetadataPath = meta,
+                        OriginalPath = Decode(encodedPath),
+                        DisplayName = Decode(encodedName),
+                        SavedAt = ParseTime(encodedTime)
+                    };
+                    if (string.IsNullOrEmpty(info.DisplayName))
+                        info.DisplayName = "Libro recuperado";
+                    return true;
                 }
-                catch
-                {
-                    // Compatibilidad con recuperaciones antiguas en texto plano.
-                    metaText = Encoding.UTF8.GetString(rawMeta);
-                }
-                Dictionary<string, string> values = new Dictionary<string, string>();
-                foreach (string line in metaText.Split(new string[] { "\r\n", "\n" },
-                    StringSplitOptions.RemoveEmptyEntries))
-                {
-                    int eq = line.IndexOf('=');
-                    if (eq <= 0) continue;
-                    values[line.Substring(0, eq)] = line.Substring(eq + 1);
-                }
-                string encodedPath, encodedName, encodedTime;
-                values.TryGetValue("path", out encodedPath);
-                values.TryGetValue("name", out encodedName);
-                values.TryGetValue("time", out encodedTime);
-                info = new RecoveryInfo
-                {
-                    SnapshotPath = snapshot,
-                    MetadataPath = meta,
-                    OriginalPath = Decode(encodedPath),
-                    DisplayName = Decode(encodedName),
-                    SavedAt = ParseTime(encodedTime)
-                };
-                if (string.IsNullOrEmpty(info.DisplayName))
-                    info.DisplayName = "Libro recuperado";
-                return true;
+                return false;
             }
             catch
             {
@@ -121,7 +132,10 @@ namespace CalcRapido
             string plain = Path.Combine(directory, "~recovery_" + Guid.NewGuid().ToString("N") + ".xlsx");
             try
             {
-                XlsxIO.Save(workbook, plain);
+                bool oldEncrypt = XlsxIO.EncryptTemporaryFiles;
+                XlsxIO.EncryptTemporaryFiles = true;
+                try { XlsxIO.Save(workbook, plain); }
+                finally { XlsxIO.EncryptTemporaryFiles = oldEncrypt; }
                 byte[] snapshot = File.ReadAllBytes(plain);
                 byte[] sealedSnapshot = ProtectedData.Protect(snapshot, null,
                     DataProtectionScope.CurrentUser);
@@ -136,6 +150,7 @@ namespace CalcRapido
             }
             StringBuilder sb = new StringBuilder();
             sb.AppendLine("version=2");
+            sb.AppendLine("snapshot=" + Path.GetFileName(SnapshotPath));
             sb.AppendLine("path=" + Encode(originalPath));
             sb.AppendLine("name=" + Encode(displayName));
             sb.AppendLine("time=" + DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture));
@@ -152,16 +167,7 @@ namespace CalcRapido
             if (info == null || !File.Exists(info.SnapshotPath))
                 throw new FileNotFoundException("No existe el snapshot de recuperación.");
             byte[] raw = File.ReadAllBytes(info.SnapshotPath);
-            byte[] plain;
-            try
-            {
-                plain = ProtectedData.Unprotect(raw, null, DataProtectionScope.CurrentUser);
-            }
-            catch
-            {
-                // Compatibilidad con snapshots antiguos sin cifrar.
-                plain = raw;
-            }
+            byte[] plain = ProtectedData.Unprotect(raw, null, DataProtectionScope.CurrentUser);
             string temp = Path.Combine(DirectoryPath,
                 "~restore_" + Guid.NewGuid().ToString("N") + ".xlsx");
             try

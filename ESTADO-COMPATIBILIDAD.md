@@ -1,16 +1,16 @@
 # Estado de desarrollo y compatibilidad con Excel
 
 Fecha: 2026-11-18  
-Versión: Mini Excel Beta 0.0.4  
+Versión: Mini Excel Beta 0.0.5  
 Artefacto: `dist/MiniExcel.exe`
 
 ## Estado de desarrollo
 
 | Indicador | Estado |
 |---|---|
-| Fase | Beta 0.0.4 |
+| Fase | Beta 0.0.5 |
 | Compilación | Correcta, sin errores ni warnings |
-| Pruebas automatizadas | 290 correctas, 0 fallidas |
+| Pruebas automatizadas | 292 correctas, 0 fallidas |
 | Tamaño del proyecto | 70 archivos, ~3,9 MB |
 | Código fuente | 24 archivos `.cs`, ~24.738 líneas |
 | Dependencias de ejecución | .NET Framework 4.8, WinForms, GDI+ |
@@ -88,8 +88,8 @@ Gráficos:                  7 correctas
 Reemplazo:                 5 correctas
 Features:                 18 correctas
 Cuadrícula:               45 correctas
-Regresión:                28 correctas
-Total:                   290 correctas, 0 fallidas
+Regresión:                30 correctas
+Total:                   292 correctas, 0 fallidas
 ```
 
 ## Conclusión

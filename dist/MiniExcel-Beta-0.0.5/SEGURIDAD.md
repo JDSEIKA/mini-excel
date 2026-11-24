@@ -1,7 +1,7 @@
 # Seguridad al abrir archivos
 
 Fecha: 2026-11-17
-Alcance: lector `.xlsx`, `.xls`, `.crb` y CSV de Mini Excel Beta 0.0.4.
+Alcance: lector `.xlsx`, `.xls`, `.crb` y CSV de Mini Excel Beta 0.0.5.
 
 ## Modelo de amenaza
 
@@ -72,10 +72,12 @@ Mini Excel trata cada archivo como **no confiable**. Los riesgos considerados so
 - Lector OLE2 con límites de archivo, flujo, sectores, cadenas y detección de cadenas circulares.
 - Libros `.xls` se abren en modo compatible de solo lectura.
 
-### Escritura
+### Escritura y recuperación
 
-- Guardado atómico mediante archivo temporal y reemplazo.
-- El archivo original no se modifica si falla la escritura.
+- Guardado atómico mediante archivo temporal y reemplazo; si el reemplazo falla se conserva el original.
+- La recuperación usa nombres por sesión, DPAPI y, cuando el volumen lo permite, EFS para el temporal.
+- No se aceptan metadatos ni snapshots de recuperación en texto plano.
+- Si EFS no está disponible, el temporal existe brevemente antes de cifrarse y borrarse; no se considera una protección completa contra acceso físico.
 
 ## Límites de seguridad
 

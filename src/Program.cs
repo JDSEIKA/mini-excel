@@ -51,6 +51,13 @@ namespace CalcRapido
             try
             {
                 logPath = Path.Combine(Application.StartupPath, "error.log");
+                FileInfo logInfo = new FileInfo(logPath);
+                if (logInfo.Exists && logInfo.Length > 1024 * 1024)
+                {
+                    string old = logPath + ".old";
+                    try { if (File.Exists(old)) File.Delete(old); File.Move(logPath, old); }
+                    catch { }
+                }
                 File.AppendAllText(logPath,
                     DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "  " + ex + Environment.NewLine);
             }

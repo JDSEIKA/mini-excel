@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace CalcRapido
@@ -1017,6 +1018,19 @@ namespace CalcRapido
         private int _depth;
         private const int MaxEvalDepth = 512;
 
+        private static bool HasStackRoom()
+        {
+            try
+            {
+                RuntimeHelpers.EnsureSufficientExecutionStack();
+                return true;
+            }
+            catch (InsufficientExecutionStackException)
+            {
+                return false;
+            }
+        }
+
         public EvalContext(Workbook wb)
         {
             Workbook = wb;
@@ -1043,7 +1057,7 @@ namespace CalcRapido
             CellValue cached;
             if (_nameCache.TryGetValue(key, out cached)) return cached;
             if (_nameVisiting.Contains(key)) return CellValue.FromError(Errors.Circular);
-            if (_depth >= MaxEvalDepth) return CellValue.FromError(Errors.Value);
+            if (_depth >= MaxEvalDepth || !HasStackRoom()) return CellValue.FromError(Errors.Value);
             _nameVisiting.Add(key);
             _depth++;
             Sheet oldSheet = CurrentSheet;
@@ -1086,7 +1100,7 @@ namespace CalcRapido
             if (_cache.TryGetValue(cell, out cached)) return cached;
             if (_visiting.Contains(cell))
                 return CellValue.FromError(Errors.Circular);
-            if (_depth >= MaxEvalDepth)
+            if (_depth >= MaxEvalDepth || !HasStackRoom())
                 return CellValue.FromError(Errors.Value);
 
             _visiting.Add(cell);

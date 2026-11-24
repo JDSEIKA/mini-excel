@@ -35,7 +35,27 @@ namespace CalcRapido
         private const int MaxCellsTotal = 4000000;
         private const int MaxSharedStrings = 1000000;
         private const int MaxStringChars = 32767;
+        [ThreadStatic]
         private static long _readBudgetRemaining = -1;
+        internal static bool EncryptTemporaryFiles { get; set; }
+
+        private static FileStream OpenTemp(string path, FileMode mode)
+        {
+            if (EncryptTemporaryFiles)
+            {
+                try
+                {
+                    return new FileStream(path, mode, FileAccess.ReadWrite, FileShare.None,
+                        4096, FileOptions.Encrypted);
+                }
+                catch
+                {
+                    // EFS no disponible: se conserva la ruta normal, que se borra
+                    // inmediatamente después de cifrar el snapshot.
+                }
+            }
+            return new FileStream(path, mode, FileAccess.ReadWrite, FileShare.None);
+        }
 
         // ---------------------------------------------------------------- LOAD
 
@@ -2521,7 +2541,7 @@ namespace CalcRapido
                     PatchWorkbook(wbDoc, wbRelDoc, ctDoc, wb, infos, wbDir);
                     string calcChainPart = RemoveCalcChain(wbRelDoc, ctDoc, wbDir);
 
-                    using (FileStream dfs = new FileStream(temp, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None))
+                    using (FileStream dfs = OpenTemp(temp, FileMode.CreateNew))
                     using (ZipArchive dz = new ZipArchive(dfs, ZipArchiveMode.Create))
                     {
                         HashSet<string> skip = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -3388,7 +3408,7 @@ namespace CalcRapido
         private static void ReplaceAtomically(string temp, string path)
         {
             IOException last = null;
-            for (int attempt = 0; attempt < 6; attempt++)
+            for (int attempt = 0; attempt < 3; attempt++)
             {
                 string backup = path + "." + Guid.NewGuid().ToString("N") + ".bak";
                 try
@@ -3408,7 +3428,7 @@ namespace CalcRapido
                 {
                     last = ex;
                     try { if (File.Exists(backup)) File.Delete(backup); } catch { }
-                    System.Threading.Thread.Sleep(80 * (attempt + 1));
+                    System.Threading.Thread.Sleep(40 * (attempt + 1));
                 }
             }
             // No se copia sobre el destino: si el reemplazo atómico falla,
@@ -3444,7 +3464,7 @@ namespace CalcRapido
             try
             {
                 using (ZipArchive input = ZipFile.OpenRead(source))
-                using (FileStream output = new FileStream(temp, FileMode.Create, FileAccess.Write))
+                using (FileStream output = OpenTemp(temp, FileMode.Create))
                 using (ZipArchive zip = new ZipArchive(output, ZipArchiveMode.Create))
                 {
                     foreach (ZipArchiveEntry entry in input.Entries)
@@ -3500,7 +3520,7 @@ namespace CalcRapido
             string temp = Path.Combine(dir, "~calcrapido_" + Guid.NewGuid().ToString("N") + ".xlsx");
             try
             {
-                using (FileStream fs = new FileStream(temp, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None))
+                using (FileStream fs = OpenTemp(temp, FileMode.CreateNew))
                 using (ZipArchive zip = new ZipArchive(fs, ZipArchiveMode.Create))
                 {
                     WritePackage(zip, wb);

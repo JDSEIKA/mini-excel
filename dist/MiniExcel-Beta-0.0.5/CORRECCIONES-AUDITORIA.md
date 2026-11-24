@@ -1,7 +1,7 @@
 # Correcciones de la auditoría estricta
 
 Fecha: 2026-11-17
-Base: Mini Excel Beta 0.0.4
+Base: Mini Excel Beta 0.0.5
 
 ## Corregido
 
@@ -109,7 +109,7 @@ Warnings:     4 correctas
 Gráficos:     7 correctas
 Features:    18 correctas
 GridLogic:   45 correctas
-Total:      290 comprobaciones, 0 fallidas
+Total:      292 comprobaciones, 0 fallidas
 ```
 
 ## Artefactos
@@ -119,9 +119,9 @@ MiniExcel.exe
 531.456 bytes
 SHA-256: BD95C43557F76FC204FEC8031D0A828A5C94F33998A37FE19669E7CB240ABD97
 
-MiniExcel-Beta-0.0.4.zip
+MiniExcel-Beta-0.0.5.zip
 273588 bytes
-SHA-256: D965BD03B848A96C517FA459EDAB4CB7547DFD3997124EC6BB0CE7CCA4EDF9BF
+SHA-256: 7CC7B09417A65D52E78E89F2FB112EEECA1EA4354394FAB46D0A54229F7EF95D
 ```
 
 
@@ -136,4 +136,4 @@ SHA-256: D965BD03B848A96C517FA459EDAB4CB7547DFD3997124EC6BB0CE7CCA4EDF9BF
 - Diagnóstico visible y `LastError` en gráficos no representables.
 - `LastSaveError` y propagación de errores de guardado.
 - Persistencia de criterios de filtro en `filterColumn`/`filters` y recarga verificada.
-- Pruebas de aislamiento de clones añadidas: 290 comprobaciones.
+- Pruebas de aislamiento de clones añadidas: 292 comprobaciones.
