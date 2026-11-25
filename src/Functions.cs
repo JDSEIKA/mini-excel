@@ -239,6 +239,22 @@ namespace CalcRapido
             AddAlias(d, "XMATCH", "COINCIDIRX");
             AddAlias(d, "INDEX", "INDICE");
             AddAlias(d, "MATCH", "COINCIDIR");
+            AddAlias(d, "LARGE", "K.ESIMO.MAYOR");
+            AddAlias(d, "SMALL", "K.ESIMO.MENOR");
+            AddAlias(d, "LOOKUP", "BUSCAR");
+            AddAlias(d, "TRANSPOSE", "TRANSPONER");
+            AddAlias(d, "PMT", "PAGO");
+            AddAlias(d, "PV", "VA");
+            AddAlias(d, "FV", "VF");
+            AddAlias(d, "NPV", "VNA");
+            AddAlias(d, "IRR", "TIR");
+            AddAlias(d, "INDIRECT", "INDIRECTO");
+            AddAlias(d, "OFFSET", "DESREF");
+            AddAlias(d, "HYPERLINK", "HIPERVINCULO");
+            AddAlias(d, "MODE", "MODA");
+            AddAlias(d, "WEEKNUM", "NUM.DE.SEMANA");
+            AddAlias(d, "SUMSQ", "SUMA.CUADRADOS");
+            AddAlias(d, "CORREL", "COEF.DE.CORREL");
             AddAlias(d, "CHOOSE", "ELEGIR");
             AddAlias(d, "ROW", "FILA");
             AddAlias(d, "COLUMN", "COLUMNA");
@@ -540,6 +556,22 @@ namespace CalcRapido
                 case "XMATCH": return FnXMatch(n, ctx);
                 case "INDEX": return FnIndex(n, ctx);
                 case "MATCH": return FnMatch(n, ctx);
+                case "LARGE":
+                case "SMALL": return FnLargeSmall(n, ctx, name == "LARGE");
+                case "LOOKUP": return FnLookup(n, ctx);
+                case "TRANSPOSE": return FnTranspose(n, ctx);
+                case "PMT":
+                case "PV":
+                case "FV": return FnFinancial(n, ctx, name);
+                case "NPV": return FnNpv(n, ctx);
+                case "IRR": return FnIrr(n, ctx);
+                case "INDIRECT": return FnIndirect(n, ctx);
+                case "OFFSET": return FnOffset(n, ctx);
+                case "HYPERLINK": return FnHyperlink(n, ctx);
+                case "MODE": return FnMode(n, ctx);
+                case "WEEKNUM": return FnWeekNum(n, ctx);
+                case "SUMSQ": return FnSumSq(n, ctx);
+                case "CORREL": return FnCorrel(n, ctx);
                 default: return CellValue.FromError(Errors.Name);
             }
         }
@@ -2237,6 +2269,367 @@ namespace CalcRapido
             catch { return CellValue.FromError(Errors.Num); }
         }
 
+        private static CellValue FnLargeSmall(FunctionNode n, EvalContext ctx, bool largest)
+        {
+            if (WrongArgs(n, 2, 2)) return CellValue.FromError(Errors.Value);
+            CellValue source = Arg(n, 0, ctx);
+            if (source.IsError) return source;
+            Matrix m = ToMatrix(source, ctx);
+            List<double> nums = new List<double>();
+            foreach (CellValue v in m.Cells) if (v.Kind == ValueKind.Number) nums.Add(v.Number);
+            double kd; CellValue err = CellValue.Empty;
+            if (!GetNumber(n, 1, ctx, out kd, out err)) return err;
+            int k = (int)Math.Truncate(kd);
+            if (nums.Count == 0 || k < 1 || k > nums.Count) return CellValue.FromError(Errors.Num);
+            nums.Sort();
+            return CellValue.FromNumber(largest ? nums[nums.Count - k] : nums[k - 1]);
+        }
+
+        private static CellValue FnLookup(FunctionNode n, EvalContext ctx)
+        {
+            if (WrongArgs(n, 2, 3)) return CellValue.FromError(Errors.Value);
+            CellValue lookup = Arg(n, 0, ctx);
+            if (lookup.IsError) return lookup;
+            CellValue keysValue = Arg(n, 1, ctx);
+            if (keysValue.IsError) return keysValue;
+            Matrix keys = ToMatrix(keysValue, ctx);
+            Matrix result = null;
+            if (n.Args.Count >= 3)
+            {
+                CellValue resultValue = Arg(n, 2, ctx);
+                if (resultValue.IsError) return resultValue;
+                result = ToMatrix(resultValue, ctx);
+            }
+            bool vertical;
+            int count;
+            if (keys.Cols == 1) { vertical = true; count = keys.Rows; }
+            else if (keys.Rows == 1) { vertical = false; count = keys.Cols; }
+            else
+            {
+                // Forma matricial: primera columna/fila como clave y última como resultado.
+                vertical = true; count = keys.Rows;
+                if (!(keys.Cols >= 2)) return CellValue.FromError(Errors.NA);
+            }
+            if (result != null && (result.Rows * result.Cols) < count)
+                return CellValue.FromError(Errors.NA);
+            int best = -1;
+            for (int i = 0; i < count; i++)
+            {
+                CellValue key = vertical ? keys.At(i, 0) : keys.At(0, i);
+                int cmp = EvalUtil.Compare(key, lookup);
+                if (cmp <= 0) best = i;
+                else if (best >= 0) break;
+            }
+            if (best < 0) return CellValue.FromError(Errors.NA);
+            if (result != null)
+                return vertical ? result.At(best, 0) : result.At(0, best);
+            if (vertical && keys.Cols > 1) return keys.At(best, keys.Cols - 1);
+            if (!vertical && keys.Rows > 1) return keys.At(keys.Rows - 1, best);
+            return vertical ? keys.At(best, 0) : keys.At(0, best);
+        }
+
+        private static CellValue FnTranspose(FunctionNode n, EvalContext ctx)
+        {
+            if (WrongArgs(n, 1, 1)) return CellValue.FromError(Errors.Value);
+            CellValue source = Arg(n, 0, ctx);
+            if (source.IsError) return source;
+            Matrix m = ToMatrix(source, ctx);
+            Matrix result = new Matrix { Rows = m.Cols, Cols = m.Rows };
+            for (int c = 0; c < m.Cols; c++)
+                for (int r = 0; r < m.Rows; r++)
+                    result.Cells.Add(m.At(r, c));
+            return FromMatrix(result);
+        }
+
+        private static bool FinanceArg(FunctionNode n, int index, EvalContext ctx, double fallback,
+                                       out double value, out CellValue error)
+        {
+            value = fallback;
+            error = CellValue.Empty;
+            if (index >= n.Args.Count) return true;
+            return GetNumber(n, index, ctx, out value, out error);
+        }
+
+        private static CellValue FnFinancial(FunctionNode n, EvalContext ctx, string kind)
+        {
+            double rate, nper, pmt = 0, pv = 0, fv = 0, type = 0;
+            CellValue err = CellValue.Empty;
+            if (!FinanceArg(n, 0, ctx, 0, out rate, out err)) return err;
+            if (!FinanceArg(n, 1, ctx, 0, out nper, out err)) return err;
+            if (kind == "PMT")
+            {
+                if (!FinanceArg(n, 2, ctx, 0, out pv, out err) ||
+                    !FinanceArg(n, 3, ctx, 0, out fv, out err) ||
+                    !FinanceArg(n, 4, ctx, 0, out type, out err)) return err;
+            }
+            else if (kind == "PV")
+            {
+                if (!FinanceArg(n, 2, ctx, 0, out pmt, out err) ||
+                    !FinanceArg(n, 3, ctx, 0, out fv, out err) ||
+                    !FinanceArg(n, 4, ctx, 0, out type, out err)) return err;
+            }
+            else
+            {
+                if (!FinanceArg(n, 2, ctx, 0, out pmt, out err) ||
+                    !FinanceArg(n, 3, ctx, 0, out pv, out err) ||
+                    !FinanceArg(n, 4, ctx, 0, out type, out err)) return err;
+            }
+            if (nper <= 0 || double.IsNaN(rate) || rate <= -1) return CellValue.FromError(Errors.Num);
+            bool due = Math.Abs(type) > 0.5;
+            double result;
+            if (Math.Abs(rate) < 1e-12)
+            {
+                if (kind == "PMT") result = -(pv + fv) / nper;
+                else if (kind == "PV") result = -(fv + pmt * nper);
+                else result = -(pv + pmt * nper);
+            }
+            else
+            {
+                double factor = Math.Pow(1 + rate, nper);
+                if (kind == "PMT")
+                    result = -(pv * factor + fv) * rate / ((factor - 1) * (due ? 1 + rate : 1));
+                else if (kind == "PV")
+                    result = -(fv + pmt * (due ? 1 + rate : 1) * (factor - 1) / rate) / factor;
+                else
+                    result = -(pv * factor + pmt * (due ? 1 + rate : 1) * (factor - 1) / rate);
+            }
+            return CellValue.FromNumber(result);
+        }
+
+        private static CellValue FnNpv(FunctionNode n, EvalContext ctx)
+        {
+            if (n.Args.Count < 2) return CellValue.FromError(Errors.Value);
+            double rate; CellValue err = CellValue.Empty;
+            if (!GetNumber(n, 0, ctx, out rate, out err)) return err;
+            if (rate <= -1) return CellValue.FromError(Errors.Num);
+            double sum = 0;
+            int period = 1;
+            for (int i = 1; i < n.Args.Count; i++)
+            {
+                CellValue v = Arg(n, i, ctx);
+                if (v.IsError) return v;
+                Matrix m = ToMatrix(v, ctx);
+                foreach (CellValue cv in m.Cells)
+                {
+                    if (cv.Kind != ValueKind.Number) continue;
+                    sum += cv.Number / Math.Pow(1 + rate, period++);
+                }
+            }
+            return CellValue.FromNumber(sum);
+        }
+
+        private static CellValue FnIrr(FunctionNode n, EvalContext ctx)
+        {
+            if (WrongArgs(n, 1, 2)) return CellValue.FromError(Errors.Value);
+            CellValue source = Arg(n, 0, ctx);
+            if (source.IsError) return source;
+            Matrix m = ToMatrix(source, ctx);
+            List<double> flows = new List<double>();
+            foreach (CellValue v in m.Cells)
+                if (v.Kind == ValueKind.Number) flows.Add(v.Number);
+            if (flows.Count < 2) return CellValue.FromError(Errors.Num);
+            double guess = 0.1; CellValue err = CellValue.Empty;
+            if (n.Args.Count >= 2 && !GetNumber(n, 1, ctx, out guess, out err)) return err;
+            double rate = guess;
+            for (int i = 0; i < 50; i++)
+            {
+                double f = NpvAt(flows, rate);
+                double df = (NpvAt(flows, rate + 1e-6) - NpvAt(flows, rate - 1e-6)) / 2e-6;
+                if (Math.Abs(f) < 1e-9) return CellValue.FromNumber(rate);
+                if (Math.Abs(df) < 1e-12) break;
+                double next = rate - f / df;
+                if (double.IsNaN(next) || next <= -1 || next > 1e9) break;
+                rate = next;
+            }
+            double lo = -0.9999, hi = 1.0;
+            double flo = NpvAt(flows, lo), fhi = NpvAt(flows, hi);
+            if (flo * fhi > 0) return CellValue.FromError(Errors.Num);
+            for (int i = 0; i < 100; i++)
+            {
+                double mid = (lo + hi) / 2;
+                double fm = NpvAt(flows, mid);
+                if (Math.Abs(fm) < 1e-9) return CellValue.FromNumber(mid);
+                if (flo * fm <= 0) { hi = mid; fhi = fm; }
+                else { lo = mid; flo = fm; }
+            }
+            return CellValue.FromNumber((lo + hi) / 2);
+        }
+
+        private static double NpvAt(List<double> flows, double rate)
+        {
+            double value = 0;
+            for (int i = 0; i < flows.Count; i++) value += flows[i] / Math.Pow(1 + rate, i);
+            return value;
+        }
+
+        private static bool TryGetReference(FormulaNode arg, EvalContext ctx, out RangeRef range)
+        {
+            range = null;
+            RangeNode rn = arg as RangeNode;
+            if (rn != null)
+            {
+                Sheet sheet = ctx.ResolveSheet(rn.SheetName);
+                if (sheet == null) return false;
+                if (!string.IsNullOrEmpty(rn.EndSheetName) &&
+                    ctx.ResolveSheet(rn.EndSheetName) != sheet) return false;
+                range = new RangeRef(sheet, rn.R1, rn.C1, rn.R2, rn.C2);
+                return true;
+            }
+            RefNode rfn = arg as RefNode;
+            if (rfn != null)
+            {
+                Sheet sheet = ctx.ResolveSheet(rfn.SheetName);
+                if (sheet == null) return false;
+                range = new RangeRef(sheet, rfn.Row, rfn.Col, rfn.Row, rfn.Col);
+                return true;
+            }
+            CellValue value = arg.Eval(ctx);
+            if (value.Kind == ValueKind.Range) { range = value.Range; return true; }
+            return false;
+        }
+
+        private static CellValue FnIndirect(FunctionNode n, EvalContext ctx)
+        {
+            if (WrongArgs(n, 1, 2)) return CellValue.FromError(Errors.Value);
+            string text; CellValue err = CellValue.Empty;
+            if (!GetText(n, 0, ctx, out text, out err)) return err;
+            text = (text ?? "").Trim();
+            if (text.StartsWith("=", StringComparison.Ordinal)) text = text.Substring(1);
+            if (text.Length == 0) return CellValue.FromError(Errors.Ref);
+            try
+            {
+                FormulaNode node = FormulaEngine.ParseInternal(text);
+                RangeRef range;
+                if (TryGetReference(node, ctx, out range))
+                {
+                    if (range.Rows == 1 && range.Cols == 1)
+                        return ctx.GetCell(range.Sheet, range.Row1, range.Col1);
+                    return CellValue.FromRange(range);
+                }
+            }
+            catch (FormulaParseException) { }
+            return CellValue.FromError(Errors.Ref);
+        }
+
+        private static CellValue FnOffset(FunctionNode n, EvalContext ctx)
+        {
+            if (WrongArgs(n, 3, 5)) return CellValue.FromError(Errors.Value);
+            RangeRef baseRange;
+            if (!TryGetReference(n.Args[0], ctx, out baseRange))
+                return CellValue.FromError(Errors.Ref);
+            double rows, cols, height = 0, width = 0;
+            CellValue err = CellValue.Empty;
+            if (!GetNumber(n, 1, ctx, out rows, out err) ||
+                !GetNumber(n, 2, ctx, out cols, out err)) return err;
+            int h = baseRange.Rows, w = baseRange.Cols;
+            if (n.Args.Count >= 4 && !GetNumber(n, 3, ctx, out height, out err)) return err;
+            if (n.Args.Count >= 5 && !GetNumber(n, 4, ctx, out width, out err)) return err;
+            if (n.Args.Count >= 4) h = (int)Math.Truncate(height);
+            if (n.Args.Count >= 5) w = (int)Math.Truncate(width);
+            int r1 = baseRange.Row1 + (int)Math.Truncate(rows);
+            int c1 = baseRange.Col1 + (int)Math.Truncate(cols);
+            if (h <= 0 || w <= 0 || r1 < 0 || c1 < 0 ||
+                r1 + h > Limits.MaxRows || c1 + w > Limits.MaxCols)
+                return CellValue.FromError(Errors.Ref);
+            return CellValue.FromRange(new RangeRef(baseRange.Sheet, r1, c1, r1 + h - 1, c1 + w - 1));
+        }
+
+        private static CellValue FnHyperlink(FunctionNode n, EvalContext ctx)
+        {
+            if (WrongArgs(n, 1, 2)) return CellValue.FromError(Errors.Value);
+            string link, label; CellValue err = CellValue.Empty;
+            if (!GetText(n, 0, ctx, out link, out err)) return err;
+            if (n.Args.Count >= 2)
+            {
+                if (!GetText(n, 1, ctx, out label, out err)) return err;
+            }
+            else label = link;
+            if (ctx.CurrentSheet != null)
+            {
+                Cell cell = ctx.CurrentSheet.GetCell(ctx.CurrentRow, ctx.CurrentCol);
+                if (cell != null) cell.Hyperlink = link;
+            }
+            return CellValue.FromText(label ?? "");
+        }
+
+        private static CellValue FnMode(FunctionNode n, EvalContext ctx)
+        {
+            if (WrongArgs(n, 1, 255)) return CellValue.FromError(Errors.Value);
+            Dictionary<double, int> counts = new Dictionary<double, int>();
+            for (int i = 0; i < n.Args.Count; i++)
+            {
+                CellValue v = Arg(n, i, ctx);
+                if (v.IsError) return v;
+                Matrix m = ToMatrix(v, ctx);
+                foreach (CellValue cv in m.Cells)
+                    if (cv.Kind == ValueKind.Number)
+                    {
+                        int count;
+                        counts.TryGetValue(cv.Number, out count);
+                        counts[cv.Number] = count + 1;
+                    }
+            }
+            double best = 0; int bestCount = 0;
+            foreach (KeyValuePair<double, int> pair in counts)
+                if (pair.Value > bestCount) { best = pair.Key; bestCount = pair.Value; }
+            if (bestCount < 2) return CellValue.FromError(Errors.NA);
+            return CellValue.FromNumber(best);
+        }
+
+        private static CellValue FnWeekNum(FunctionNode n, EvalContext ctx)
+        {
+            if (WrongArgs(n, 1, 2)) return CellValue.FromError(Errors.Value);
+            double serial, typeD = 1; CellValue err = CellValue.Empty;
+            if (!GetNumber(n, 0, ctx, out serial, out err)) return err;
+            if (n.Args.Count >= 2 && !GetNumber(n, 1, ctx, out typeD, out err)) return err;
+            try
+            {
+                DateTime date = DateTime.FromOADate(serial);
+                int type = (int)Math.Truncate(typeD);
+                Calendar cal = CultureInfo.CurrentCulture.Calendar;
+                CalendarWeekRule rule = CalendarWeekRule.FirstDay;
+                DayOfWeek first = DayOfWeek.Sunday;
+                if (type == 21) { rule = CalendarWeekRule.FirstFourDayWeek; first = DayOfWeek.Monday; }
+                else if (type == 2) first = DayOfWeek.Monday;
+                return CellValue.FromNumber(cal.GetWeekOfYear(date, rule, first));
+            }
+            catch { return CellValue.FromError(Errors.Num); }
+        }
+
+        private static CellValue FnSumSq(FunctionNode n, EvalContext ctx)
+        {
+            List<double> nums; CellValue err = CellValue.Empty;
+            if (!CollectNumbers(n, ctx, true, out nums, out err)) return err;
+            double sum = 0;
+            foreach (double d in nums) sum += d * d;
+            return CellValue.FromNumber(sum);
+        }
+
+        private static CellValue FnCorrel(FunctionNode n, EvalContext ctx)
+        {
+            if (WrongArgs(n, 2, 2)) return CellValue.FromError(Errors.Value);
+            CellValue a = Arg(n, 0, ctx), b = Arg(n, 1, ctx);
+            if (a.IsError) return a;
+            if (b.IsError) return b;
+            Matrix ma = ToMatrix(a, ctx), mb = ToMatrix(b, ctx);
+            if (ma.Cells.Count != mb.Cells.Count) return CellValue.FromError(Errors.NA);
+            double sx = 0, sy = 0;
+            int count = 0;
+            for (int i = 0; i < ma.Cells.Count; i++)
+                if (ma.Cells[i].Kind == ValueKind.Number && mb.Cells[i].Kind == ValueKind.Number)
+                { sx += ma.Cells[i].Number; sy += mb.Cells[i].Number; count++; }
+            if (count < 2) return CellValue.FromError(Errors.NA);
+            double mx = sx / count, my = sy / count, num = 0, dx = 0, dy = 0;
+            for (int i = 0; i < ma.Cells.Count; i++)
+                if (ma.Cells[i].Kind == ValueKind.Number && mb.Cells[i].Kind == ValueKind.Number)
+                {
+                    double x = ma.Cells[i].Number - mx, y = mb.Cells[i].Number - my;
+                    num += x * y; dx += x * x; dy += y * y;
+                }
+            if (dx <= 0 || dy <= 0) return CellValue.FromError(Errors.Div0);
+            return CellValue.FromNumber(num / Math.Sqrt(dx * dy));
+        }
+
         private static bool ValuesEqual(CellValue a, CellValue b)
         {
             if (a.IsError || b.IsError) return false;
@@ -2683,6 +3076,22 @@ namespace CalcRapido
             Add(l, "AÑO", "AÑO(fecha)", "Fecha", "Extrae el año de una fecha.");
             Add(l, "MES", "MES(fecha)", "Fecha", "Extrae el mes de una fecha.");
             Add(l, "DIA", "DIA(fecha)", "Fecha", "Extrae el día de una fecha.");
+            Add(l, "K.ESIMO.MAYOR", "K.ESIMO.MAYOR(matriz; k)", "Estadística", "Devuelve el k-ésimo valor mayor.");
+            Add(l, "K.ESIMO.MENOR", "K.ESIMO.MENOR(matriz; k)", "Estadística", "Devuelve el k-ésimo valor menor.");
+            Add(l, "BUSCAR", "BUSCAR(valor; vector; [resultado])", "Búsqueda", "Busca un valor en un vector.");
+            Add(l, "TRANSPONER", "TRANSPONER(matriz)", "Matriz", "Intercambia filas y columnas.");
+            Add(l, "PAGO", "PAGO(tasa; nper; va; [vf]; [tipo])", "Financiera", "Calcula el pago de un préstamo.");
+            Add(l, "VA", "VA(tasa; nper; pago; [vf]; [tipo])", "Financiera", "Calcula el valor actual.");
+            Add(l, "VF", "VF(tasa; nper; pago; [va]; [tipo])", "Financiera", "Calcula el valor futuro.");
+            Add(l, "VNA", "VNA(tasa; valor1; ...)", "Financiera", "Calcula el valor actual neto.");
+            Add(l, "TIR", "TIR(valores; [estimación])", "Financiera", "Calcula la tasa interna de retorno.");
+            Add(l, "INDIRECTO", "INDIRECTO(ref; [a1])", "Búsqueda", "Convierte un texto en referencia.");
+            Add(l, "DESREF", "DESREF(ref; filas; columnas; [alto]; [ancho])", "Búsqueda", "Desplaza una referencia.");
+            Add(l, "HIPERVINCULO", "HIPERVINCULO(enlace; [texto])", "Búsqueda", "Crea un enlace.");
+            Add(l, "MODA", "MODA(número1; ...)", "Estadística", "Devuelve el valor más frecuente.");
+            Add(l, "NUM.DE.SEMANA", "NUM.DE.SEMANA(fecha; [tipo])", "Fecha", "Devuelve el número de semana.");
+            Add(l, "SUMA.CUADRADOS", "SUMA.CUADRADOS(número1; ...)", "Matemáticas", "Suma los cuadrados.");
+            Add(l, "COEF.DE.CORREL", "COEF.DE.CORREL(matriz1; matriz2)", "Estadística", "Calcula la correlación.");
             return l;
         }
     }

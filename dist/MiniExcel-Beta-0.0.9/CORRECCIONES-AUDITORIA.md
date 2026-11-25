@@ -1,7 +1,7 @@
 # Correcciones de la auditoría estricta
 
 Fecha: 2026-11-17
-Base: Mini Excel Beta 0.0.8
+Base: Mini Excel Beta 0.0.9
 
 ## Corregido
 
@@ -107,21 +107,21 @@ tras guardar y recargar: A1:G62
 Pruebas:     91 correctas
 Warnings:     4 correctas
 Gráficos:     7 correctas
-Features:    18 correctas
+Features:    22 correctas
 GridLogic:   45 correctas
-Total:      294 comprobaciones, 0 fallidas
+Total:      298 comprobaciones, 0 fallidas
 ```
 
 ## Artefactos
 
 ```text
 MiniExcel.exe
-535.040 bytes
-SHA-256: 9786732BD78869595AE103C8F1C32FD43138E239BEA56C117BB566D8E89E2573
+544.256 bytes
+SHA-256: 56BD9FBFC783F25CDEA73D3D0C48012ACDF043B2F2298E396363D5E2E75E1A65
 
-MiniExcel-Beta-0.0.8.zip
-276511 bytes
-SHA-256: A8778DC17EFB46A44CC17C6E41DBAD484A1CE83637F802DA131FE892BC9DBB27
+MiniExcel-Beta-0.0.9.zip
+279976 bytes
+SHA-256: 199BBEBC89A273948129A4ACBCF549DC942DECDCA080E73E38E2FE3F40C6FF05
 ```
 
 
@@ -136,10 +136,10 @@ SHA-256: A8778DC17EFB46A44CC17C6E41DBAD484A1CE83637F802DA131FE892BC9DBB27
 - Diagnóstico visible y `LastError` en gráficos no representables.
 - `LastSaveError` y propagación de errores de guardado.
 - Persistencia de criterios de filtro en `filterColumn`/`filters` y recarga verificada.
-- Pruebas de aislamiento de clones añadidas: 294 comprobaciones.
+- Pruebas de aislamiento de clones añadidas: 298 comprobaciones.
 
 
-## Ronda Beta 0.0.8 — auditoría de 0.0.5
+## Ronda Beta 0.0.9 — auditoría de 0.0.5
 
 - H1: CSV ya no antepone apóstrofo a números negativos; se añadieron pruebas con -5 y -1234,5.
 - H2: recuperación por sesión con PID, exclusión de sesiones activas y borrado de la sesión restaurada/descartada.

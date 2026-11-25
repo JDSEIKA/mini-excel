@@ -1,7 +1,7 @@
 # Seguridad al abrir archivos
 
 Fecha: 2026-11-17
-Alcance: lector `.xlsx`, `.xls`, `.crb` y CSV de Mini Excel Beta 0.0.8.
+Alcance: lector `.xlsx`, `.xls`, `.crb` y CSV de Mini Excel Beta 0.0.9.
 
 ## Modelo de amenaza
 
