@@ -1,4 +1,4 @@
-﻿# Mini Excel Beta 0.0.6
+﻿# Mini Excel Beta 0.0.7
 
 Hoja de cÃ¡lculo nativa para Windows, parte de la idea **Mini Office**: rÃ¡pida, pequeÃ±a y capaz de
 abrir y guardar los `.xlsx` que envÃ­an otras suites.
@@ -100,6 +100,7 @@ LÃ­mites de hoja: 1.048.576 filas Ã— 16.384 columnas, 32.767 caracteres por
 ## Licencia
 
 MIT. Consulta `LICENSE`.
+
 
 
 

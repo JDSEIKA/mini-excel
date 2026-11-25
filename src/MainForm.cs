@@ -572,6 +572,7 @@ namespace CalcRapido
                 _dirty = true;
                 _undo.Clear();
                 BindWorkbook();
+                ClearRecovery(info);
                 _statusLabel.Text = "Documento recuperado; guárdalo para conservar los cambios";
             }
             catch (Exception ex)

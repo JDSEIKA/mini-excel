@@ -68,12 +68,8 @@ namespace CalcRapido
             info = null;
             try
             {
-                try
-                {
-                    foreach (string legacy in Directory.GetFiles(DirectoryPath, "session.recovery.*"))
-                        File.Delete(legacy);
-                }
-                catch { }
+                // No se borran recuperaciones antiguas automáticamente: el usuario
+                // debe decidir si las conserva o las descarta.
                 string[] metas = Directory.GetFiles(DirectoryPath, "session-*.recovery.txt");
                 Array.Sort(metas, delegate(string a, string b)
                 {

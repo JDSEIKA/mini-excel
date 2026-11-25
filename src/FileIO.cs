@@ -528,7 +528,7 @@ namespace CalcRapido
                     if (col > 0) sb.Append(separator);
                     Cell c = s.GetCell(row, col);
                     if (c == null) continue;
-                    string text = CsvText(c, separator);
+                    string text = CsvText(c, separator, s.Workbook != null && s.Workbook.Date1904);
                     if (text.IndexOfAny(new char[] { separator, '"', '\r', '\n' }) >= 0)
                     {
                         sb.Append('"');
@@ -548,7 +548,7 @@ namespace CalcRapido
             });
         }
 
-        private static string CsvText(Cell cell, char separator)
+        private static string CsvText(Cell cell, char separator, bool date1904)
         {
             if (cell == null) return "";
             CellValue value = cell.Value;
@@ -556,17 +556,27 @@ namespace CalcRapido
             if (value.Kind == ValueKind.Number)
             {
                 CellStyle style = cell.EffectiveStyle;
-                if (style != null && (style.Format == NumberFormatKind.Date ||
-                    style.Format == NumberFormatKind.Time ||
-                    style.Format == NumberFormatKind.Custom && style.CustomFormat != null &&
-                    style.CustomFormat.IndexOfAny(new char[] { 'y', 'd', 'h', 's' }) >= 0))
+                bool wantsDate = false, wantsTime = false;
+                if (style != null)
+                {
+                    if (style.Format == NumberFormatKind.Date) wantsDate = true;
+                    else if (style.Format == NumberFormatKind.Time) wantsTime = true;
+                    else if (style.Format == NumberFormatKind.Custom)
+                        HasDateTimeTokens(style.CustomFormat, out wantsDate, out wantsTime);
+                }
+                if (wantsDate || wantsTime)
                 {
                     try
                     {
-                        DateTime dt = DateTime.FromOADate(value.Number);
-                        text = style.Format == NumberFormatKind.Time || value.Number < 1
-                            ? dt.ToString("HH:mm:ss", CultureInfo.InvariantCulture)
-                            : dt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                        double serial = value.Number;
+                        if (date1904 && cell.IsFormula) serial += 1462;
+                        DateTime dt = DateTime.FromOADate(serial);
+                        if (wantsDate && wantsTime)
+                            text = dt.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture);
+                        else if (wantsDate)
+                            text = dt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                        else
+                            text = dt.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
                     }
                     catch { text = value.Number.ToString("R", CultureInfo.InvariantCulture); }
                 }
@@ -581,6 +591,30 @@ namespace CalcRapido
                 "=+-@\t\r".IndexOf(text[0]) >= 0)
                 text = "'" + text;
             return text;
+        }
+
+        private static void HasDateTimeTokens(string code, out bool hasDate, out bool hasTime)
+        {
+            hasDate = false;
+            hasTime = false;
+            if (string.IsNullOrEmpty(code)) return;
+            bool quoted = false;
+            for (int i = 0; i < code.Length; i++)
+            {
+                char c = code[i];
+                if (c == '"') { quoted = !quoted; continue; }
+                if (quoted) continue;
+                if (c == '\\' && i + 1 < code.Length) { i++; continue; }
+                if (c == '[')
+                {
+                    int close = code.IndexOf(']', i + 1);
+                    if (close < 0) break;
+                    i = close;
+                    continue;
+                }
+                if (c == 'y' || c == 'Y' || c == 'd' || c == 'D') hasDate = true;
+                else if (c == 'h' || c == 'H' || c == 's' || c == 'S') hasTime = true;
+            }
         }
 
         public static Workbook LoadCsv(string path)
@@ -613,7 +647,7 @@ namespace CalcRapido
                     // Los teléfonos con + y espacios deben conservarse como texto,
                     // no convertirse en un número que pierde el prefijo.
                     if (value.Length > 1 && value[0] == '+' &&
-                        value.IndexOfAny(new char[] { ' ', '-', '(', ')' }) >= 0)
+                        LooksLikePhone(value))
                         sheet.SetTextLiteral(r, c, value);
                     else
                         sheet.SetInput(r, c, value);
@@ -644,6 +678,20 @@ namespace CalcRapido
                 try { return Encoding.GetEncoding(1252).GetString(bytes); }
                 catch { return Encoding.Default.GetString(bytes); }
             }
+        }
+
+        private static bool LooksLikePhone(string value)
+        {
+            if (value == null || value.Length < 2 || value[0] != '+') return false;
+            int digits = 0;
+            for (int i = 1; i < value.Length; i++)
+            {
+                char c = value[i];
+                if (char.IsDigit(c)) digits++;
+                else if (c == ' ' || c == '-' || c == '(' || c == ')' || c == '.') continue;
+                else return false;
+            }
+            return digits >= 7 || value.IndexOfAny(new char[] { ' ', '-', '(', ')' }) >= 0;
         }
 
         private static char DetectDelimiter(string text)

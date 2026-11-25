@@ -6,6 +6,6 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyProduct("Mini Excel")]
 [assembly: AssemblyCompany("Mini Excel")]
 [assembly: AssemblyCopyright("Copyright © 2026 Mini Excel")]
-[assembly: AssemblyVersion("0.0.6.0")]
-[assembly: AssemblyFileVersion("0.0.6.0")]
+[assembly: AssemblyVersion("0.0.7.0")]
+[assembly: AssemblyFileVersion("0.0.7.0")]
 [assembly: ComVisible(false)]

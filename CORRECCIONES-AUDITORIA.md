@@ -1,7 +1,7 @@
 # Correcciones de la auditoría estricta
 
 Fecha: 2026-11-17
-Base: Mini Excel Beta 0.0.6
+Base: Mini Excel Beta 0.0.7
 
 ## Corregido
 
@@ -116,12 +116,12 @@ Total:      294 comprobaciones, 0 fallidas
 
 ```text
 MiniExcel.exe
-534.528 bytes
-SHA-256: 911F9EA26B78FFEAE1DD0C634F6BB39A2DAF11F98F5F44351166602C2CCA5CC8
+535.040 bytes
+SHA-256: 64E551F2265E013E80591BA0F94244878D4B177F7B1A66079F6FCF17D789279D
 
-MiniExcel-Beta-0.0.6.zip
-276286 bytes
-SHA-256: E9C07DFE5EC5A21A21E4C146FC116C625A3C18540800F1EBBC4CBE7FC1E2E88E
+MiniExcel-Beta-0.0.7.zip
+276509 bytes
+SHA-256: F469A968DC5D0A27A5579588E66CBC23FE25ACA219D2D3E2B0FF0B96D4E58E61
 ```
 
 
@@ -139,7 +139,7 @@ SHA-256: E9C07DFE5EC5A21A21E4C146FC116C625A3C18540800F1EBBC4CBE7FC1E2E88E
 - Pruebas de aislamiento de clones añadidas: 294 comprobaciones.
 
 
-## Ronda Beta 0.0.6 — auditoría de 0.0.5
+## Ronda Beta 0.0.7 — auditoría de 0.0.5
 
 - H1: CSV ya no antepone apóstrofo a números negativos; se añadieron pruebas con -5 y -1234,5.
 - H2: recuperación por sesión con PID, exclusión de sesiones activas y borrado de la sesión restaurada/descartada.

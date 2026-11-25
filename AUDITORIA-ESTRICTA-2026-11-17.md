@@ -1,9 +1,9 @@
-# Auditoría estricta — Mini Excel Beta 0.0.6
+# Auditoría estricta — Mini Excel Beta 0.0.7
 
 Fecha: 2026-11-17  
 Alcance: código fuente completo de `src/` (24 archivos, 24.738 líneas), compilación, pruebas automatizadas y sondas dinámicas.  
-Artefacto auditado inicialmente: `dist/MiniExcel.exe`, 534.528 bytes, SHA-256 `911F9EA26B78FFEAE1DD0C634F6BB39A2DAF11F98F5F44351166602C2CCA5CC8`.
-Artefacto corregido: `dist/MiniExcel.exe`, 534.528 bytes, SHA-256 `911F9EA26B78FFEAE1DD0C634F6BB39A2DAF11F98F5F44351166602C2CCA5CC8`.
+Artefacto auditado inicialmente: `dist/MiniExcel.exe`, 535.040 bytes, SHA-256 `64E551F2265E013E80591BA0F94244878D4B177F7B1A66079F6FCF17D789279D`.
+Artefacto corregido: `dist/MiniExcel.exe`, 535.040 bytes, SHA-256 `64E551F2265E013E80591BA0F94244878D4B177F7B1A66079F6FCF17D789279D`.
 
 ## Veredicto
 
@@ -254,8 +254,8 @@ Las macros se detectan y no se ejecutan; los vínculos externos se advierten per
 Compilación:    OK, sin errores ni advertencias
 Pruebas:        91 + 47 + 33 + 7 + 4 + 5 + 7 + 5 + 18 + 45 + 32
 Total:          294 correctas, 0 fallidas
-Artefacto:      534.528 bytes
-SHA-256:        911F9EA26B78FFEAE1DD0C634F6BB39A2DAF11F98F5F44351166602C2CCA5CC8
+Artefacto:      535.040 bytes
+SHA-256:        64E551F2265E013E80591BA0F94244878D4B177F7B1A66079F6FCF17D789279D
 ```
 
 Pruebas dinámicas adicionales:
