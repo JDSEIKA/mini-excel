@@ -1,13 +1,13 @@
-# Auditoría estricta — Mini Excel Beta 0.0.9
+# Auditoría estricta — Mini Excel Beta 0.0.10
 
 Fecha: 2026-11-17  
 Alcance: código fuente completo de `src/` (24 archivos, 24.738 líneas), compilación, pruebas automatizadas y sondas dinámicas.  
-Artefacto auditado inicialmente: `dist/MiniExcel.exe`, 544.256 bytes, SHA-256 `56BD9FBFC783F25CDEA73D3D0C48012ACDF043B2F2298E396363D5E2E75E1A65`.
-Artefacto corregido: `dist/MiniExcel.exe`, 544.256 bytes, SHA-256 `56BD9FBFC783F25CDEA73D3D0C48012ACDF043B2F2298E396363D5E2E75E1A65`.
+Artefacto auditado inicialmente: `dist/MiniExcel.exe`, 547.840 bytes, SHA-256 `F3CB87C9A115CFCCD05226005EE19BEE72A253F7DC6FE4C5FE5A3C4398EFE794`.
+Artefacto corregido: `dist/MiniExcel.exe`, 547.840 bytes, SHA-256 `F3CB87C9A115CFCCD05226005EE19BEE72A253F7DC6FE4C5FE5A3C4398EFE794`.
 
 ## Veredicto
 
-El proyecto compila sin errores ni advertencias del compilador y las 298 comprobaciones automatizadas pasan. Se corrigieron los hallazgos críticos y la mayoría de los altos; **sigue sin estar listo para considerarse una auditoría de seguridad completa** porque quedan fuzzing, firma, escritura BIFF8 y pruebas de integración.
+El proyecto compila sin errores ni advertencias del compilador y las 304 comprobaciones automatizadas pasan. Se corrigieron los hallazgos críticos y la mayoría de los altos; **sigue sin estar listo para considerarse una auditoría de seguridad completa** porque quedan fuzzing, firma, escritura BIFF8 y pruebas de integración.
 
 La protección de hojas tiene rutas de escritura que todavía la omiten. El guardado «strict» puede perder el archivo de destino si falla el reemplazo. El sistema de deshacer comparte objetos mutables entre instantáneas.
 
@@ -253,9 +253,9 @@ Las macros se detectan y no se ejecutan; los vínculos externos se advierten per
 ```text
 Compilación:    OK, sin errores ni advertencias
 Pruebas:        91 + 47 + 33 + 7 + 4 + 5 + 7 + 5 + 18 + 45 + 32
-Total:          298 correctas, 0 fallidas
-Artefacto:      544.256 bytes
-SHA-256:        56BD9FBFC783F25CDEA73D3D0C48012ACDF043B2F2298E396363D5E2E75E1A65
+Total:          304 correctas, 0 fallidas
+Artefacto:      547.840 bytes
+SHA-256:        F3CB87C9A115CFCCD05226005EE19BEE72A253F7DC6FE4C5FE5A3C4398EFE794
 ```
 
 Pruebas dinámicas adicionales:

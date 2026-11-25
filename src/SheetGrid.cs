@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
 namespace CalcRapido
@@ -112,7 +113,9 @@ namespace CalcRapido
             protected override bool IsInputKey(Keys keyData)
             {
                 Keys k = keyData & Keys.KeyCode;
-                if (k == Keys.Tab || k == Keys.Enter || k == Keys.Escape) return true;
+                if (k == Keys.Tab || k == Keys.Enter || k == Keys.Escape || k == Keys.F4) return true;
+                if ((keyData & Keys.Control) != 0 &&
+                    (k == Keys.OemSemicolon || k == Keys.Oem1)) return true;
                 return base.IsInputKey(keyData);
             }
             protected override void OnKeyDown(KeyEventArgs e)
@@ -1051,7 +1054,12 @@ namespace CalcRapido
         {
             Keys k = keyData & Keys.KeyCode;
             if (k == Keys.Tab || k == Keys.Enter || k == Keys.Left || k == Keys.Right || k == Keys.Up ||
-                k == Keys.Down || k == Keys.Home || k == Keys.End || k == Keys.PageUp || k == Keys.PageDown)
+                k == Keys.Down || k == Keys.Home || k == Keys.End || k == Keys.PageUp || k == Keys.PageDown ||
+                k == Keys.F4 || k == Keys.Space)
+                return true;
+            if ((keyData & Keys.Control) != 0 &&
+                (k == Keys.OemSemicolon || k == Keys.Oem1 || k == Keys.D0 || k == Keys.D9 ||
+                 k == Keys.NumPad0 || k == Keys.NumPad9))
                 return true;
             return base.IsInputKey(keyData);
         }
@@ -1105,13 +1113,51 @@ namespace CalcRapido
                     MoveActive(shift ? -1 : 1, 0, false, true);
                     e.Handled = true; break;
                 case Keys.Home:
-                    if (ctrl) SelectCell(0, 0);
+                    if (ctrl && shift) SelectRange(0, 0, _activeRow, _activeCol);
+                    else if (ctrl) SelectCell(0, 0);
                     else MoveActive(0, -_activeCol, shift, true);
                     e.Handled = true; break;
                 case Keys.End:
-                    if (ctrl) SelectCell(Math.Max(0, Sheet.UsedMaxRow), Math.Max(0, Sheet.UsedMaxCol));
+                    if (ctrl && shift) SelectRange(_activeRow, _activeCol,
+                        Math.Max(_activeRow, Sheet.UsedMaxRow), Math.Max(_activeCol, Sheet.UsedMaxCol));
+                    else if (ctrl) SelectCell(Math.Max(0, Sheet.UsedMaxRow), Math.Max(0, Sheet.UsedMaxCol));
                     else MoveActive(0, _colCount - 1 - _activeCol, shift, true);
                     e.Handled = true; break;
+                case Keys.Space:
+                    if (ctrl)
+                    {
+                        SelectRange(0, _activeCol, Math.Max(_activeRow, Sheet.UsedMaxRow), _activeCol);
+                        e.Handled = true;
+                    }
+                    else if (shift)
+                    {
+                        SelectRange(_activeRow, 0, _activeRow, Math.Max(_activeCol, Sheet.UsedMaxCol));
+                        e.Handled = true;
+                    }
+                    break;
+                case Keys.OemSemicolon:
+                    if (ctrl)
+                    {
+                        InsertDateTime(shift);
+                        e.Handled = true;
+                    }
+                    break;
+                case Keys.D0:
+                case Keys.NumPad0:
+                    if (ctrl)
+                    {
+                        SetSelectedColumnsHidden(!shift);
+                        e.Handled = true;
+                    }
+                    break;
+                case Keys.D9:
+                case Keys.NumPad9:
+                    if (ctrl)
+                    {
+                        SetSelectedRowsHidden(!shift);
+                        e.Handled = true;
+                    }
+                    break;
                 case Keys.PageUp:
                     MoveActive(-Math.Max(1, (_viewHeight - _headerHeight) / _rowHeight - 1), 0, shift, true);
                     e.Handled = true; break;
@@ -1261,7 +1307,7 @@ namespace CalcRapido
                 _editor = new CellEditor();
                 _editor.Owner = this;
                 _editor.BorderStyle = BorderStyle.None;
-                _editor.Multiline = false;
+                _editor.Multiline = true;
                 _editor.AutoSize = false;
                 _editor.WordWrap = false;
                 _editor.BackColor = Color.White;
@@ -1305,11 +1351,33 @@ namespace CalcRapido
                 CancelEdit();
                 return true;
             }
+            if (e.Alt && e.KeyCode == Keys.Enter)
+            {
+                InsertEditorText(Environment.NewLine);
+                return true;
+            }
+            if (e.KeyCode == Keys.F4)
+            {
+                ToggleFormulaReference();
+                return true;
+            }
+            if (e.Control && (e.KeyCode == Keys.OemSemicolon || e.KeyCode == Keys.Oem1))
+            {
+                InsertEditorText(e.Shift
+                    ? DateTime.Now.ToString("HH:mm:ss", CultureInfo.CurrentCulture)
+                    : DateTime.Today.ToString("d", CultureInfo.CurrentCulture));
+                return true;
+            }
             if (e.KeyCode == Keys.Enter)
             {
                 if (e.Control)
                 {
-                    if (CommitEdit()) Focus();
+                    string text = _editor.Text;
+                    int er = _editRow, ec = _editCol;
+                    bool multi = _selTop != _selBottom || _selLeft != _selRight;
+                    if (!CommitEdit()) return true;
+                    if (multi) FillSelectionFromText(text, er, ec);
+                    Focus();
                     return true;
                 }
                 int dr = e.Shift ? -1 : 1;
@@ -1323,6 +1391,59 @@ namespace CalcRapido
                 return true;
             }
             return false;
+        }
+
+        private void InsertEditorText(string text)
+        {
+            if (_editor == null) return;
+            int start = _editor.SelectionStart;
+            int length = _editor.SelectionLength;
+            _editor.Text = _editor.Text.Substring(0, start) + text +
+                _editor.Text.Substring(start + length);
+            _editor.SelectionStart = start + text.Length;
+            _editor.SelectionLength = 0;
+        }
+
+        private void FillSelectionFromText(string text, int sourceRow, int sourceCol)
+        {
+            if (Sheet == null || text == null) return;
+            if ((long)(_selBottom - _selTop + 1) * (_selRight - _selLeft + 1) > 200000) return;
+            OnBeforeChange();
+            for (int r = _selTop; r <= _selBottom; r++)
+                for (int c = _selLeft; c <= _selRight; c++)
+                    if (r != sourceRow || c != sourceCol)
+                        Sheet.SetInput(r, c, text);
+            OnChanged();
+        }
+
+        private void ToggleFormulaReference()
+        {
+            if (_editor == null) return;
+            string text = _editor.Text;
+            int caret = _editor.SelectionStart;
+            MatchCollection matches = Regex.Matches(text,
+                @"(?<![A-Za-z0-9_])(\$?)([A-Za-z]{1,3})(\$?)(\d+)(?![A-Za-z0-9_])");
+            for (int i = 0; i < matches.Count; i++)
+            {
+                Match m = matches[i];
+                if (caret < m.Index || caret > m.Index + m.Length) continue;
+                int quote = 0;
+                for (int q = 0; q < m.Index; q++) if (text[q] == '"') quote++;
+                if ((quote & 1) != 0) return;
+                bool colAbs = m.Groups[1].Value.Length > 0;
+                bool rowAbs = m.Groups[3].Value.Length > 0;
+                if (!colAbs && !rowAbs) { colAbs = true; rowAbs = true; }
+                else if (colAbs && rowAbs) { colAbs = false; rowAbs = true; }
+                else if (!colAbs && rowAbs) { colAbs = true; rowAbs = false; }
+                else { colAbs = false; rowAbs = false; }
+                string replacement = (colAbs ? "$" : "") + m.Groups[2].Value +
+                    (rowAbs ? "$" : "") + m.Groups[4].Value;
+                _editor.Text = text.Substring(0, m.Index) + replacement +
+                    text.Substring(m.Index + m.Length);
+                _editor.SelectionStart = m.Index + replacement.Length;
+                _editor.SelectionLength = 0;
+                return;
+            }
         }
 
         public bool CommitEdit()
@@ -1434,6 +1555,54 @@ namespace CalcRapido
         public void BeginExternalEdit()
         {
             OnBeforeChange();
+        }
+
+        public void InsertDateTime(bool timeOnly)
+        {
+            if (!EnsureWritable() || Sheet == null) return;
+            double serial = timeOnly ? DateTime.Now.TimeOfDay.TotalDays : DateTime.Today.ToOADate();
+            if ((long)(_selBottom - _selTop + 1) * (_selRight - _selLeft + 1) > 200000) return;
+            OnBeforeChange();
+            for (int r = _selTop; r <= _selBottom; r++)
+                for (int c = _selLeft; c <= _selRight; c++)
+                {
+                    Sheet.SetNumber(r, c, serial);
+                    Cell cell = Sheet.GetCell(r, c);
+                    CellStyle style = cell == null ? new CellStyle() : cell.EffectiveStyle.Clone();
+                    style.Format = timeOnly ? NumberFormatKind.Time : NumberFormatKind.Date;
+                    style.CustomFormat = null;
+                    Sheet.SetStyle(r, c, style);
+                }
+            OnChanged();
+        }
+
+        public void SetSelectedColumnsHidden(bool hidden)
+        {
+            if (!EnsureWritable() || Sheet == null) return;
+            for (int c = _selLeft; c <= _selRight; c++) Sheet.SetColumnHidden(c, hidden);
+            RebuildMetrics();
+            OnChanged();
+        }
+
+        public void SetSelectedRowsHidden(bool hidden)
+        {
+            if (!EnsureWritable() || Sheet == null) return;
+            for (int r = _selTop; r <= _selBottom; r++) Sheet.SetRowHidden(r, hidden);
+            RebuildMetrics();
+            OnChanged();
+        }
+
+        public void ToggleAutoFilter()
+        {
+            if (!EnsureWritable() || Sheet == null) return;
+            if (string.IsNullOrEmpty(Sheet.AutoFilterRef)) SetAutoFilterSelection();
+            else
+            {
+                Sheet.AutoFilterRef = null;
+                Sheet.FilterSelections.Clear();
+                Sheet.RowsDirty = true;
+                OnChanged();
+            }
         }
 
         private bool EnsureWritable()

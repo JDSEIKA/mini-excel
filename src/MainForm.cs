@@ -1266,6 +1266,30 @@ namespace CalcRapido
             }
         }
 
+        private void NavigateSheet(int delta)
+        {
+            if (_workbook == null || _workbook.Sheets.Count < 2) return;
+            int count = _workbook.Sheets.Count;
+            int index = (_workbook.ActiveSheetIndex + delta + count) % count;
+            SelectSheet(index);
+        }
+
+        private void InsertHyperlinkAtActiveCell()
+        {
+            if (_workbook == null || _workbook.ActiveSheet == null) return;
+            string link = InputDialog.Show(this, "Hipervínculo",
+                "Dirección http, https, mailto o referencia interna:", "https://");
+            if (string.IsNullOrWhiteSpace(link)) return;
+            Cell cell = _workbook.ActiveSheet.GetOrCreate(_grid.ActiveRow, _grid.ActiveCol);
+            cell.Hyperlink = link.Trim();
+            cell.HyperlinkInternal = link.TrimStart().StartsWith("#", StringComparison.Ordinal) ||
+                link.TrimStart().StartsWith("'", StringComparison.Ordinal) ||
+                link.IndexOf('!') > 0;
+            _dirty = true;
+            _grid.Invalidate();
+            UpdateTitle();
+        }
+
         private void SelectSheet(int index)
         {
             if (_workbook == null || index < 0 || index >= _workbook.Sheets.Count) return;
@@ -1705,6 +1729,12 @@ namespace CalcRapido
                 Execute("recalc");
                 return true;
             }
+            if (key == Keys.F5 && !textEditing)
+            {
+                _nameBox.Focus();
+                _nameBox.SelectAll();
+                return true;
+            }
             if (key == Keys.Delete && _grid.HasSelectedImage)
             {
                 _grid.DeleteSelectedImage();
@@ -1733,8 +1763,30 @@ namespace CalcRapido
                     case Keys.S:
                         if (shift) SaveBookAs(); else SaveBook();
                         return true;
-                    case Keys.Z: Undo(); return true;
+                    case Keys.Z:
+                        if (shift) Redo(); else Undo();
+                        return true;
                     case Keys.Y: Redo(); return true;
+                    case Keys.PageUp:
+                        NavigateSheet(-1);
+                        return true;
+                    case Keys.PageDown:
+                        NavigateSheet(1);
+                        return true;
+                    case Keys.L:
+                        if (shift) { _grid.ToggleAutoFilter(); return true; }
+                        break;
+                    case Keys.K:
+                        InsertHyperlinkAtActiveCell();
+                        return true;
+                    case Keys.Oemplus:
+                    case Keys.Add:
+                        if (shift) { _grid.InsertRow(); return true; }
+                        break;
+                    case Keys.OemMinus:
+                    case Keys.Subtract:
+                        if (shift) { _grid.DeleteRow(); return true; }
+                        break;
                     case Keys.B: Execute("bold"); return true;
                     case Keys.I: Execute("italic"); return true;
                     case Keys.U: Execute("underline"); return true;

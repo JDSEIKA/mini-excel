@@ -209,6 +209,24 @@ public static class GridLogicTest
             Check("activa combinada", "A1", grid.ActiveCellName);
             grid.MoveActiveCell(0, 1);
             Check("salir de celda combinada", "C1", grid.ActiveCellName);
+
+            Workbook wb7 = new Workbook();
+            grid.Attach(wb7, 0);
+            grid.SelectCell(0, 0);
+            grid.InsertDateTime(false);
+            Check("fecha rápida", "Date", wb7.Sheets[0].GetCell(0, 0).EffectiveStyle.Format.ToString());
+            grid.InsertDateTime(true);
+            Check("hora rápida", "Time", wb7.Sheets[0].GetCell(0, 0).EffectiveStyle.Format.ToString());
+            grid.SelectRange(0, 1, 0, 2);
+            grid.SetSelectedColumnsHidden(true);
+            Check("ocultar columnas", "2", wb7.Sheets[0].HiddenCols.Count.ToString());
+            grid.SetSelectedColumnsHidden(false);
+            Check("mostrar columnas", "0", wb7.Sheets[0].HiddenCols.Count.ToString());
+            grid.SelectRange(0, 0, 0, 2);
+            grid.ToggleAutoFilter();
+            Check("autofiltro atajo activa", "A1:C1", wb7.Sheets[0].AutoFilterRef);
+            grid.ToggleAutoFilter();
+            Check("autofiltro atajo desactiva", "", wb7.Sheets[0].AutoFilterRef ?? "");
         }
         Console.WriteLine("GridLogic: " + _ok + " correctas, " + _bad + " fallidas.");
         return _bad == 0 ? 0 : 1;

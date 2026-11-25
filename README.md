@@ -1,6 +1,6 @@
 # Mini Excel
 
-> **Mini Excel Beta 0.0.9**
+> **Mini Excel Beta 0.0.10**
 > Seguridad de apertura: ver [SEGURIDAD.md](SEGURIDAD.md). — vista previa, no estable 1.0. Ver `PRUEBAS-COMPATIBILIDAD.md` para
 > los límites de `.xls`, fórmulas compartidas, imágenes y objetos avanzados.
 
@@ -9,7 +9,7 @@ interfaz y unos comandos deliberadamente parecidos a Excel. Forma parte de la id
 un programa de pocos cientos de KB que puede abrir, editar y guardar los `.xlsx` que envían otras
 suites, sin arrastrar una instalación de varios cientos de MB.
 
-- **Un solo ejecutable de 532 KB** (544.256 bytes), sin instalador, sin Electron y sin
+- **Un solo ejecutable de 535 KB** (547.840 bytes), sin instalador, sin Electron y sin
   dependencias de terceros.
 - **Arranque medido: 228–365 ms** según la caché del sistema; en caliente ronda los 230–240 ms
   (Windows 10 x64, .NET Framework 4.8).
@@ -199,6 +199,20 @@ Excel, LibreOffice ni bibliotecas externas.
 | Rellenar abajo / derecha | `Ctrl+D`, `Ctrl+R` |
 | Mostrar fórmulas | Pestaña **Vista** |
 | Zoom | `Ctrl+rueda`, botones de la barra de estado o pestaña **Vista** |
+| Cambiar de hoja | `Ctrl+RePág` / `Ctrl+AvPág` |
+| Seleccionar columna / fila | `Ctrl+Espacio` / `Shift+Espacio` |
+| Fecha / hora actuales | `Ctrl+;` / `Ctrl+Shift+;` |
+| Rellenar la selección | `Ctrl+Enter` |
+| Salto de línea en la celda | `Alt+Enter` |
+| Seleccionar hasta A1 / última celda | `Ctrl+Shift+Inicio` / `Ctrl+Shift+Fin` |
+| Alternar referencia absoluta | `F4` dentro del editor de fórmulas |
+| Ir a una celda | `F5` o `Ctrl+G` |
+| Activar/desactivar autofiltro | `Ctrl+Shift+L` |
+| Insertar hipervínculo | `Ctrl+K` |
+| Rehacer | `Ctrl+Y` o `Ctrl+Shift+Z` |
+| Ocultar/mostrar columnas | `Ctrl+0` / `Ctrl+Shift+0` |
+| Ocultar/mostrar filas | `Ctrl+9` / `Ctrl+Shift+9` |
+| Insertar/eliminar filas | `Ctrl+Shift++` / `Ctrl+-` |
 
 **Autosuma** no vuelve a sumar las operaciones de bloques anteriores: si encuentra un subtotal
 previo (`SUMA`, `SUM`, `SUBTOTAL`), lo incluye como saldo de partida y se detiene ahí. Si hay una
@@ -306,7 +320,7 @@ inicial muestra 256 columnas y crece al navegar o pegar datos.
 
 | Métrica | Valor |
 |---|---|
-| Ejecutable | 544.256 bytes (532 KB) |
+| Ejecutable | 547.840 bytes (535 KB) |
 | Arranque hasta ventana | 228–365 ms según caché; ~230–240 ms en caliente |
 | Working set en reposo | ~32 MB |
 | Dependencias de terceros | Ninguna |
@@ -319,9 +333,9 @@ inicial muestra 256 columnas y crece al navegar o pegar datos.
 | Gráficos XLSX/CRB e imágenes | Pruebas: 7 correctas |
 | Validación, autofiltro, funcionales y OOXML strict | Pruebas: 22 correctas |
 | Buscar y reemplazar | Pruebas: 5 correctas |
-| Cuadrícula, filtro y freeze | Pruebas: 45 correctas |
+| Cuadrícula, filtro, atajos y freeze | Pruebas: 51 correctas |
 | Regresión de seguridad, clones y guardado | Pruebas: 32 correctas |
-| **Total** | **298 comprobaciones** |
+| **Total** | **304 comprobaciones** |
 
 El ejecutable usa **WinForms sobre .NET Framework 4.8** (incluido en Windows 10/11), sin runtime
 adicional, sin instalador y sin archivos que acompañen al `.exe`. La cuadrícula dibuja solo las
