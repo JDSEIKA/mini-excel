@@ -1,6 +1,6 @@
 # Mini Excel
 
-> **Mini Excel Beta 0.0.5**
+> **Mini Excel Beta 0.0.6**
 > Seguridad de apertura: ver [SEGURIDAD.md](SEGURIDAD.md). — vista previa, no estable 1.0. Ver `PRUEBAS-COMPATIBILIDAD.md` para
 > los límites de `.xls`, fórmulas compartidas, imágenes y objetos avanzados.
 
@@ -9,7 +9,7 @@ interfaz y unos comandos deliberadamente parecidos a Excel. Forma parte de la id
 un programa de pocos cientos de KB que puede abrir, editar y guardar los `.xlsx` que envían otras
 suites, sin arrastrar una instalación de varios cientos de MB.
 
-- **Un solo ejecutable de 519 KB** (531.456 bytes), sin instalador, sin Electron y sin
+- **Un solo ejecutable de 522 KB** (534.528 bytes), sin instalador, sin Electron y sin
   dependencias de terceros.
 - **Arranque medido: 228–365 ms** según la caché del sistema; en caliente ronda los 230–240 ms
   (Windows 10 x64, .NET Framework 4.8).
@@ -306,7 +306,7 @@ inicial muestra 256 columnas y crece al navegar o pegar datos.
 
 | Métrica | Valor |
 |---|---|
-| Ejecutable | 531.456 bytes (519 KB) |
+| Ejecutable | 534.528 bytes (522 KB) |
 | Arranque hasta ventana | 228–365 ms según caché; ~230–240 ms en caliente |
 | Working set en reposo | ~32 MB |
 | Dependencias de terceros | Ninguna |
@@ -320,8 +320,8 @@ inicial muestra 256 columnas y crece al navegar o pegar datos.
 | Validación, autofiltro y OOXML strict | Pruebas: 18 correctas |
 | Buscar y reemplazar | Pruebas: 5 correctas |
 | Cuadrícula, filtro y freeze | Pruebas: 45 correctas |
-| Regresión de seguridad, clones y guardado | Pruebas: 30 correctas |
-| **Total** | **292 comprobaciones** |
+| Regresión de seguridad, clones y guardado | Pruebas: 32 correctas |
+| **Total** | **294 comprobaciones** |
 
 El ejecutable usa **WinForms sobre .NET Framework 4.8** (incluido en Windows 10/11), sin runtime
 adicional, sin instalador y sin archivos que acompañen al `.exe`. La cuadrícula dibuja solo las

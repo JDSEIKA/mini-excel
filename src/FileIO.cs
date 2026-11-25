@@ -517,8 +517,9 @@ namespace CalcRapido
             maxCol = Math.Min(maxCol, 1000);
             if ((long)(maxRow + 1) * (maxCol + 1) > 2000000)
                 throw new FileFormatException("La hoja es demasiado grande para exportarla a CSV.");
-            char separator = CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator == ","
-                ? ';' : ',';
+            string listSeparator = CultureInfo.CurrentCulture.TextInfo.ListSeparator;
+            char separator = string.IsNullOrEmpty(listSeparator) || listSeparator.Length != 1
+                ? ',' : listSeparator[0];
             StringBuilder sb = new StringBuilder();
             for (int row = 0; row <= maxRow; row++)
             {
@@ -538,6 +539,9 @@ namespace CalcRapido
                 }
                 sb.Append("\r\n");
             }
+            string dir = Path.GetDirectoryName(Path.GetFullPath(path));
+            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+                throw new DirectoryNotFoundException("No existe la carpeta de destino.");
             AtomicIO.Save(path, delegate(string temp)
             {
                 File.WriteAllText(temp, sb.ToString(), new UTF8Encoding(true));
@@ -553,18 +557,28 @@ namespace CalcRapido
             {
                 CellStyle style = cell.EffectiveStyle;
                 if (style != null && (style.Format == NumberFormatKind.Date ||
-                    style.Format == NumberFormatKind.Time || style.Format == NumberFormatKind.Percent ||
-                    style.Format == NumberFormatKind.Currency || style.Format == NumberFormatKind.Custom))
-                    text = NumberFormatter.Format(value, style);
+                    style.Format == NumberFormatKind.Time ||
+                    style.Format == NumberFormatKind.Custom && style.CustomFormat != null &&
+                    style.CustomFormat.IndexOfAny(new char[] { 'y', 'd', 'h', 's' }) >= 0))
+                {
+                    try
+                    {
+                        DateTime dt = DateTime.FromOADate(value.Number);
+                        text = style.Format == NumberFormatKind.Time || value.Number < 1
+                            ? dt.ToString("HH:mm:ss", CultureInfo.InvariantCulture)
+                            : dt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                    }
+                    catch { text = value.Number.ToString("R", CultureInfo.InvariantCulture); }
+                }
                 else
-                    text = value.Number.ToString("R",
-                        separator == ';' ? CultureInfo.CurrentCulture : CultureInfo.InvariantCulture);
+                    text = value.Number.ToString("R", CultureInfo.InvariantCulture);
             }
             else if (value.Kind == ValueKind.Empty) text = "";
             else text = value.ToDisplayString();
 
-            // Protección contra inyección CSV también para resultados de formulas.
-            if (text.Length > 0 && "=+-@\t\r".IndexOf(text[0]) >= 0)
+            // Solo texto/errores necesitan protección; los números negativos no.
+            if (value.Kind != ValueKind.Number && text.Length > 0 &&
+                "=+-@\t\r".IndexOf(text[0]) >= 0)
                 text = "'" + text;
             return text;
         }
@@ -598,7 +612,8 @@ namespace CalcRapido
                         throw new FileFormatException("El CSV contiene demasiadas celdas.");
                     // Los teléfonos con + y espacios deben conservarse como texto,
                     // no convertirse en un número que pierde el prefijo.
-                    if (value.Length > 1 && value[0] == '+')
+                    if (value.Length > 1 && value[0] == '+' &&
+                        value.IndexOfAny(new char[] { ' ', '-', '(', ')' }) >= 0)
                         sheet.SetTextLiteral(r, c, value);
                     else
                         sheet.SetInput(r, c, value);

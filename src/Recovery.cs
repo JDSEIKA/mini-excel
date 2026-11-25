@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Security.Cryptography;
@@ -67,6 +68,12 @@ namespace CalcRapido
             info = null;
             try
             {
+                try
+                {
+                    foreach (string legacy in Directory.GetFiles(DirectoryPath, "session.recovery.*"))
+                        File.Delete(legacy);
+                }
+                catch { }
                 string[] metas = Directory.GetFiles(DirectoryPath, "session-*.recovery.txt");
                 Array.Sort(metas, delegate(string a, string b)
                 {
@@ -93,6 +100,11 @@ namespace CalcRapido
                         if (eq <= 0) continue;
                         values[line.Substring(0, eq)] = line.Substring(eq + 1);
                     }
+                    string pidText;
+                    int pid;
+                    if (values.TryGetValue("pid", out pidText) && int.TryParse(pidText, out pid) &&
+                        pid != Process.GetCurrentProcess().Id && IsProcessActive(pid))
+                        continue; // otra instancia sigue viva
                     string snapshotName;
                     if (!values.TryGetValue("snapshot", out snapshotName) ||
                         string.IsNullOrEmpty(snapshotName)) continue;
@@ -151,6 +163,7 @@ namespace CalcRapido
             StringBuilder sb = new StringBuilder();
             sb.AppendLine("version=2");
             sb.AppendLine("snapshot=" + Path.GetFileName(SnapshotPath));
+            sb.AppendLine("pid=" + Process.GetCurrentProcess().Id);
             sb.AppendLine("path=" + Encode(originalPath));
             sb.AppendLine("name=" + Encode(displayName));
             sb.AppendLine("time=" + DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture));
@@ -181,6 +194,23 @@ namespace CalcRapido
             {
                 try { if (File.Exists(temp)) File.Delete(temp); } catch { }
             }
+        }
+
+        private static bool IsProcessActive(int pid)
+        {
+            try
+            {
+                using (Process p = Process.GetProcessById(pid))
+                    return !p.HasExited;
+            }
+            catch { return false; }
+        }
+
+        public static void Clear(RecoveryInfo info)
+        {
+            if (info == null) return;
+            try { if (File.Exists(info.SnapshotPath)) File.Delete(info.SnapshotPath); } catch { }
+            try { if (File.Exists(info.MetadataPath)) File.Delete(info.MetadataPath); } catch { }
         }
 
         public static void Clear()

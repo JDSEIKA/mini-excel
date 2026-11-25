@@ -579,12 +579,19 @@ namespace CalcRapido
         {
             int maxCol = Math.Max(64, sheet.UsedMaxCol + 64);
             int maxRow = Math.Max(1024, sheet.UsedMaxRow + 1024);
-            foreach (Match m in Regex.Matches(formula, @"(?<![A-Za-z0-9_])([A-Z]{1,3})\$?(\d+)", RegexOptions.None, TimeSpan.FromMilliseconds(250)))
+            try
             {
-                int col, row;
-                if (!AddressUtil.TryColumnIndex(m.Groups[1].Value, out col)) return false;
-                if (!int.TryParse(m.Groups[2].Value, out row)) return false;
-                if (col > maxCol || row > maxRow) return false;
+                foreach (Match m in Regex.Matches(formula, @"(?<![A-Za-z0-9_])([A-Z]{1,3})\$?(\d+)", RegexOptions.None, TimeSpan.FromMilliseconds(250)))
+                {
+                    int col, row;
+                    if (!AddressUtil.TryColumnIndex(m.Groups[1].Value, out col)) return false;
+                    if (!int.TryParse(m.Groups[2].Value, out row)) return false;
+                    if (col > maxCol || row > maxRow) return false;
+                }
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                return false;
             }
             return true;
         }

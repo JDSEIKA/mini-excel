@@ -1,7 +1,7 @@
 # Correcciones de la auditoría estricta
 
 Fecha: 2026-11-17
-Base: Mini Excel Beta 0.0.5
+Base: Mini Excel Beta 0.0.6
 
 ## Corregido
 
@@ -109,19 +109,19 @@ Warnings:     4 correctas
 Gráficos:     7 correctas
 Features:    18 correctas
 GridLogic:   45 correctas
-Total:      292 comprobaciones, 0 fallidas
+Total:      294 comprobaciones, 0 fallidas
 ```
 
 ## Artefactos
 
 ```text
 MiniExcel.exe
-533.504 bytes
-SHA-256: 6E95DF4F79793811520F05E07598F8BC4D88881B2884CD5D13A5288452B183FA
+534.528 bytes
+SHA-256: 911F9EA26B78FFEAE1DD0C634F6BB39A2DAF11F98F5F44351166602C2CCA5CC8
 
-MiniExcel-Beta-0.0.5.zip
-275213 bytes
-SHA-256: 3F634436D2028045A37B944829F389924DCB05D73212B8A3FB0C9496D197822F
+MiniExcel-Beta-0.0.6.zip
+276286 bytes
+SHA-256: E9C07DFE5EC5A21A21E4C146FC116C625A3C18540800F1EBBC4CBE7FC1E2E88E
 ```
 
 
@@ -136,4 +136,17 @@ SHA-256: 3F634436D2028045A37B944829F389924DCB05D73212B8A3FB0C9496D197822F
 - Diagnóstico visible y `LastError` en gráficos no representables.
 - `LastSaveError` y propagación de errores de guardado.
 - Persistencia de criterios de filtro en `filterColumn`/`filters` y recarga verificada.
-- Pruebas de aislamiento de clones añadidas: 292 comprobaciones.
+- Pruebas de aislamiento de clones añadidas: 294 comprobaciones.
+
+
+## Ronda Beta 0.0.6 — auditoría de 0.0.5
+
+- H1: CSV ya no antepone apóstrofo a números negativos; se añadieron pruebas con -5 y -1234,5.
+- H2: recuperación por sesión con PID, exclusión de sesiones activas y borrado de la sesión restaurada/descartada.
+- H3/H4: cifrado temporal y presupuesto de lectura aislados por hilo; `Load` limpia el presupuesto en `finally`.
+- H5: CSV exporta valores numéricos crudos y fechas en ISO 8601 en lugar de texto formateado.
+- H6: separador CSV según `TextInfo.ListSeparator`.
+- H7: captura de `RegexMatchTimeoutException` en fórmulas compartidas de `.xls`.
+- H9: exportación CSV rechaza una carpeta de destino inexistente.
+- H10: solo los teléfonos con espacios/guiones se fuerzan a texto; `+5` sigue siendo numérico.
+- Pendiente: P1 (límite 512), P2 (DOM XML), P3 (trabajo pesado en UI), P4 (guardado nativo no unificado).

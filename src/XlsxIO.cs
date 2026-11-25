@@ -37,7 +37,13 @@ namespace CalcRapido
         private const int MaxStringChars = 32767;
         [ThreadStatic]
         private static long _readBudgetRemaining = -1;
-        internal static bool EncryptTemporaryFiles { get; set; }
+        [ThreadStatic]
+        private static bool _encryptTemporaryFiles;
+        internal static bool EncryptTemporaryFiles
+        {
+            get { return _encryptTemporaryFiles; }
+            set { _encryptTemporaryFiles = value; }
+        }
 
         private static FileStream OpenTemp(string path, FileMode mode)
         {
@@ -60,6 +66,18 @@ namespace CalcRapido
         // ---------------------------------------------------------------- LOAD
 
         public static Workbook Load(string path)
+        {
+            try
+            {
+                return LoadCore(path);
+            }
+            finally
+            {
+                _readBudgetRemaining = -1;
+            }
+        }
+
+        private static Workbook LoadCore(string path)
         {
             FileInfo fi = new FileInfo(path);
             if (fi.Length > MaxFileBytes) throw new FileFormatException("El archivo .xlsx es demasiado grande.");

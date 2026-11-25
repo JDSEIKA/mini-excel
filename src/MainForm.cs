@@ -464,7 +464,7 @@ namespace CalcRapido
         private void StartRecoveryTimer()
         {
             _recoveryTimer = new Timer();
-            _recoveryTimer.Interval = 15000;
+            _recoveryTimer.Interval = 30000;
             _recoveryTimer.Tick += delegate { RecoveryTick(); };
             _recoveryTimer.Start();
             FormClosed += delegate
@@ -538,12 +538,17 @@ namespace CalcRapido
             try { RecoveryManager.Clear(); } catch { }
         }
 
+        private void ClearRecovery(RecoveryInfo info)
+        {
+            try { RecoveryManager.Clear(info); } catch { }
+        }
+
         private void TryRestoreRecoveredDocument()
         {
             RecoveryInfo info;
             if (!RecoveryManager.TryRead(out info))
             {
-                ClearRecovery();
+                ClearRecovery(info);
                 return;
             }
             string where = string.IsNullOrEmpty(info.OriginalPath)
@@ -555,7 +560,7 @@ namespace CalcRapido
                 "Recuperar documento", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (answer != DialogResult.Yes)
             {
-                ClearRecovery();
+                ClearRecovery(info);
                 return;
             }
             try
@@ -573,7 +578,7 @@ namespace CalcRapido
             {
                 MessageBox.Show(this, "No se pudo recuperar el documento:\n\n" + ex.Message,
                     "Mini Excel", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                ClearRecovery();
+                ClearRecovery(info);
             }
         }
 

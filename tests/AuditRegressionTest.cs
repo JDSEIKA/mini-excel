@@ -163,6 +163,27 @@ public static class AuditRegressionTest
                 wb.Sheets[0].GetCell(0, 1).Value.ToDisplayString());
             Check("csv teléfono texto", wb.Sheets[0].GetCell(1, 1).Value.Text == "+57 300",
                 wb.Sheets[0].GetCell(1, 1).Value.ToDisplayString());
+
+            string csvOut = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
+                "mini-csv-out-" + Guid.NewGuid().ToString("N") + ".csv");
+            try
+            {
+                Workbook numbers = new Workbook();
+                numbers.Sheets[0].SetNumber(0, 0, -5);
+                numbers.Sheets[0].SetNumber(0, 1, -1234.5);
+                FileIO.SaveCsv(numbers, csvOut);
+                Workbook back = FileIO.Open(csvOut);
+                Check("csv negativo -5", back.Sheets[0].GetCell(0, 0).Value.Kind == ValueKind.Number &&
+                    Math.Abs(back.Sheets[0].GetCell(0, 0).Value.Number + 5) < 1e-9,
+                    back.Sheets[0].GetCell(0, 0).Value.ToDisplayString());
+                Check("csv negativo decimal", back.Sheets[0].GetCell(0, 1).Value.Kind == ValueKind.Number &&
+                    Math.Abs(back.Sheets[0].GetCell(0, 1).Value.Number + 1234.5) < 1e-9,
+                    back.Sheets[0].GetCell(0, 1).Value.ToDisplayString());
+            }
+            finally
+            {
+                try { if (File.Exists(csvOut)) File.Delete(csvOut); } catch { }
+            }
         }
         finally
         {
